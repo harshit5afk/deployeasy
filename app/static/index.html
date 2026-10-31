@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeployEasy status</title>
+<style>
+:root{--bg:#fafaf7;--ink:#1c1f23;--mute:#5d646c;--line:#dcdcd4;--ok:#1a7f4b;--bad:#b3261e;--wait:#8a6100}
+@media (prefers-color-scheme:dark){:root{--bg:#15171a;--ink:#eceae4;--mute:#9aa1a9;--line:#2c3036;--ok:#4cc38a;--bad:#ff8a80;--wait:#e0b34a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,sans-serif}
+main{max-width:640px;margin:0 auto;padding:2.5rem 1.25rem}
+h1{font-size:1.5rem;margin:0 0 .25rem;font-weight:600}
+p.sub{margin:0 0 2rem;color:var(--mute)}
+.status{display:flex;align-items:center;gap:.75rem;font-size:1.5rem;font-weight:600;padding:1.25rem 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.dot{flex:none;width:14px;height:14px;border-radius:50%;background:var(--wait)}
+.ok .dot{background:var(--ok)}.bad .dot{background:var(--bad)}
+dl{display:grid;grid-template-columns:auto 1fr;gap:.5rem 1.5rem;margin:1.5rem 0}
+dt{color:var(--mute)}dd{margin:0;font-family:ui-monospace,monospace}
+h2{font-size:1.05rem;margin:2rem 0 .5rem;font-weight:600}
+ul{list-style:none;padding:0;margin:0}
+li{display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0;border-bottom:1px solid var(--line)}
+li span:last-child{color:var(--mute);font-family:ui-monospace,monospace;font-size:.9rem}
+.note{color:var(--mute);font-size:.9rem}
+</style>
+</head>
+<body>
+<main>
+<h1>DeployEasy</h1>
+<p class="sub">Live status of the deployed service</p>
+<div id="status" class="status"><span class="dot"></span><span id="status-text">Service is waking up...</span></div>
+<dl>
+<dt>Version</dt><dd id="ver">-</dd>
+<dt>Commit</dt><dd id="sha">-</dd>
+<dt>Process uptime</dt><dd id="up">-</dd>
+<dt>Requests since process start</dt><dd id="req">-</dd>
+</dl>
+<p class="note">Uptime and request count reset whenever the service restarts or redeploys. Long-term availability history is in UptimeRobot.</p>
+<h2>Recent pipeline runs</h2>
+<ul id="runs"><li><span>Loading...</span></li></ul>
+<p id="runs-note" class="note"></p>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const get = async p => { const r = await fetch(p); if(!r.ok) throw new Error(p); return r.json(); };
+const esc = s => String(s).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+async function refresh(){
+  try{
+    const [h, v, m] = await Promise.all([get('/health'), get('/version'), get('/metrics')]);
+    $('status').className = 'status ok';
+    $('status-text').textContent = h.status === 'ok' ? 'Healthy' : 'Degraded';
+    $('ver').textContent = v.version;
+    $('sha').textContent = v.git_sha.slice(0,7);
+    $('up').textContent = Math.round(m.process_uptime_seconds) + ' s';
+    $('req').textContent = m.requests_since_process_start;
+  }catch(e){
+    $('status').className = 'status bad';
+    $('status-text').textContent = 'Not responding. If it was idle, it can take about a minute to wake up.';
+  }
+  try{
+    const d = await get('/api/runs');
+    $('runs').innerHTML = d.runs.length ? d.runs.map(r =>
+      `<li><span>${esc(r.name)} - ${esc(r.status)}</span><span>${esc(r.sha)}</span></li>`).join('') : '<li><span>No runs to show</span></li>';
+    $('runs-note').textContent = d.message || '';
+  }catch(e){ $('runs-note').textContent = 'Could not load pipeline runs.'; }
+}
+refresh(); setInterval(refresh, 15000);
+</script>
+</body>
+</html>
