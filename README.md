@@ -2,7 +2,7 @@
 
 An automated CI/CD pipeline with health verification, monitoring, rollback, and a live status dashboard. Push code, and it is tested, built into a Docker image once, scanned, published, deployed to Render, and verified automatically.
 
-![pipeline](https://github.com/<owner>/deployeasy/actions/workflows/pipeline.yml/badge.svg)
+![pipeline](https://github.com/harshit5afk/deployeasy/actions/workflows/pipeline.yml/badge.svg)
 
 **Live URL:** `<add your Render URL here>`  |  Dashboard: `<url>/dashboard`
 
