@@ -43,7 +43,11 @@ async def structured_logging(request: Request, call_next):
 
 
 @app.get("/")
-def root():
+def root(request: Request):
+    accept = request.headers.get("accept", "")
+    # If opened in a web browser, serve the visual dashboard
+    if "text/html" in accept and not accept.startswith("*/*"):
+        return FileResponse(STATIC / "index.html")
     return {"message": "Welcome to DeployEasy"}
 
 

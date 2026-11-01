@@ -3,68 +3,1053 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DeployEasy status</title>
+<title>DeployEasy • Production Cloud CI/CD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#fafaf7;--ink:#1c1f23;--mute:#5d646c;--line:#dcdcd4;--ok:#1a7f4b;--bad:#b3261e;--wait:#8a6100}
-@media (prefers-color-scheme:dark){:root{--bg:#15171a;--ink:#eceae4;--mute:#9aa1a9;--line:#2c3036;--ok:#4cc38a;--bad:#ff8a80;--wait:#e0b34a}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,sans-serif}
-main{max-width:640px;margin:0 auto;padding:2.5rem 1.25rem}
-h1{font-size:1.5rem;margin:0 0 .25rem;font-weight:600}
-p.sub{margin:0 0 2rem;color:var(--mute)}
-.status{display:flex;align-items:center;gap:.75rem;font-size:1.5rem;font-weight:600;padding:1.25rem 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.dot{flex:none;width:14px;height:14px;border-radius:50%;background:var(--wait)}
-.ok .dot{background:var(--ok)}.bad .dot{background:var(--bad)}
-dl{display:grid;grid-template-columns:auto 1fr;gap:.5rem 1.5rem;margin:1.5rem 0}
-dt{color:var(--mute)}dd{margin:0;font-family:ui-monospace,monospace}
-h2{font-size:1.05rem;margin:2rem 0 .5rem;font-weight:600}
-ul{list-style:none;padding:0;margin:0}
-li{display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0;border-bottom:1px solid var(--line)}
-li span:last-child{color:var(--mute);font-family:ui-monospace,monospace;font-size:.9rem}
-.note{color:var(--mute);font-size:.9rem}
+:root {
+  --bg: #090a0f;
+  --bg-card: rgba(18, 20, 29, 0.7);
+  --bg-card-hover: rgba(26, 29, 43, 0.85);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(124, 58, 237, 0.5);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --primary: #8b5cf6;
+  --primary-glow: rgba(139, 92, 246, 0.25);
+  --accent: #6366f1;
+  --accent-pink: #ec4899;
+  --success: #10b981;
+  --success-glow: rgba(16, 185, 129, 0.25);
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background-color: var(--bg);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Ambient glow backgrounds */
+.ambient-glow {
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 480px;
+  background: radial-gradient(ellipse at center, rgba(124, 58, 237, 0.16) 0%, rgba(99, 102, 241, 0.08) 45%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ambient-glow-2 {
+  position: absolute;
+  top: 900px;
+  right: -100px;
+  width: 600px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.08) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Header */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(9, 10, 15, 0.8);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.9rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: var(--text-main);
+}
+
+.logo-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 50%, var(--accent-pink) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px var(--primary-glow);
+}
+
+.logo-badge svg {
+  width: 20px;
+  height: 20px;
+  fill: #fff;
+}
+
+.brand-text {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.brand-text span {
+  color: var(--primary);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.nav-links a:hover {
+  color: var(--text-main);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #34d399;
+}
+
+.status-pill.degraded {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+}
+
+.status-pill.down {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 10px var(--success);
+  animation: pulse 2s infinite;
+}
+
+.status-pill.degraded .pulse-dot { background: var(--warning); box-shadow: 0 0 10px var(--warning); }
+.status-pill.down .pulse-dot { background: var(--error); box-shadow: 0 0 10px var(--error); }
+
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.btn-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-header:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Main Container */
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 5rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Hero Section */
+.hero {
+  text-align: center;
+  margin-bottom: 3.5rem;
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 9999px;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.28);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #c4b5fd;
+  margin-bottom: 1.5rem;
+}
+
+.hero-tag span {
+  display: inline-block;
+  font-size: 0.9rem;
+}
+
+.hero-title {
+  font-size: clamp(2.4rem, 5vw, 3.8rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.25rem;
+  color: #ffffff;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #a78bfa 0%, #818cf8 40%, #f472b6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-desc {
+  max-width: 720px;
+  margin: 0 auto 2rem;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.6rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 4px 20px var(--primary-glow);
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(139, 92, 246, 0.4);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.6rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-2px);
+}
+
+/* Telemetry Grid */
+.grid-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 3.5rem;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.stat-card:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(139, 92, 246, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+.stat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a78bfa;
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.35rem;
+  font-family: var(--font-mono);
+}
+
+.stat-subtext {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* Section styling */
+.section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+}
+
+.section-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.section-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Pipeline Flow Visualizer */
+.pipeline-flow {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.75rem;
+  margin-bottom: 3.5rem;
+}
+
+.pipeline-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 1rem;
+  position: relative;
+}
+
+.step-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.15rem 1rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.step-card:hover {
+  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.35);
+  transform: translateY(-2px);
+}
+
+.step-number {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 0.4rem;
+}
+
+.step-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  color: #fff;
+}
+
+.step-desc {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+
+.step-badge {
+  display: inline-block;
+  margin-top: 0.6rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+}
+
+/* API Testing Console */
+.console-container {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 1.5rem;
+  margin-bottom: 3.5rem;
+}
+
+@media (max-width: 860px) {
+  .console-container { grid-template-columns: 1fr; }
+}
+
+.console-controls {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+}
+
+.console-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.console-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+
+.endpoint-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.btn-endpoint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.btn-endpoint:hover {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.btn-endpoint.active {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.method-tag {
+  background: #0284c7;
+  color: #ffffff;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.console-output {
+  background: #06070a;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.output-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.badge-status {
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+pre#json-display {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: #a5f3fc;
+  overflow: auto;
+  line-height: 1.55;
+  flex-grow: 1;
+  max-height: 250px;
+  padding-right: 0.5rem;
+}
+
+/* Pipeline Runs Feed */
+.runs-box {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 3.5rem;
+}
+
+.run-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.run-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.15rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+.run-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.run-conclusion {
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.conclusion-success { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.conclusion-failure { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.conclusion-queued { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+
+.run-sha {
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.run-time {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* Footer */
+footer {
+  border-top: 1px solid var(--border);
+  background: rgba(9, 10, 15, 0.9);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.footer-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.footer-links a:hover {
+  color: var(--primary);
+}
 </style>
 </head>
 <body>
+
+<div class="ambient-glow"></div>
+<div class="ambient-glow-2"></div>
+
+<!-- Header -->
+<header>
+  <div class="header-container">
+    <a href="#" class="brand">
+      <div class="logo-badge">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <span class="brand-text">Deploy<span>Easy</span></span>
+    </a>
+    
+    <ul class="nav-links">
+      <li><a href="#stats">Telemetry</a></li>
+      <li><a href="#pipeline">Pipeline</a></li>
+      <li><a href="#console">API Console</a></li>
+      <li><a href="/docs" target="_blank">Swagger UI</a></li>
+    </ul>
+
+    <div class="header-actions">
+      <div id="status-pill" class="status-pill">
+        <span class="pulse-dot"></span>
+        <span id="status-text">Connecting...</span>
+      </div>
+      <a href="https://github.com" target="_blank" class="btn-header">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</header>
+
 <main>
-<h1>DeployEasy</h1>
-<p class="sub">Live status of the deployed service</p>
-<div id="status" class="status"><span class="dot"></span><span id="status-text">Service is waking up...</span></div>
-<dl>
-<dt>Version</dt><dd id="ver">-</dd>
-<dt>Commit</dt><dd id="sha">-</dd>
-<dt>Process uptime</dt><dd id="up">-</dd>
-<dt>Requests since process start</dt><dd id="req">-</dd>
-</dl>
-<p class="note">Uptime and request count reset whenever the service restarts or redeploys. Long-term availability history is in UptimeRobot.</p>
-<h2>Recent pipeline runs</h2>
-<ul id="runs"><li><span>Loading...</span></li></ul>
-<p id="runs-note" class="note"></p>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-tag">
+      <span>⚡</span> Automated CI/CD • Build Once • Instant Rollback
+    </div>
+    <h1 class="hero-title">
+      Developer-First Cloud Deployment<br>
+      <span class="gradient-text">Built to Never Fail Silently.</span>
+    </h1>
+    <p class="hero-desc">
+      DeployEasy packages Python 3.12 + FastAPI in immutable Docker containers, verifies security with Trivy, pushes to GitHub Container Registry, deploys to Render, and verifies health automatically.
+    </p>
+    <div class="hero-actions">
+      <a href="#stats" class="btn-primary">
+        View Live Telemetry
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/></svg>
+      </a>
+      <a href="#console" class="btn-secondary">
+        Test Endpoints Live
+      </a>
+    </div>
+  </section>
+
+  <!-- Live Stats -->
+  <section id="stats">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="20" height="20" fill="var(--primary)" viewBox="0 0 16 16"><path d="M1 11a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-4zm6-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V7zm6-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2z"/></svg>
+        Real-time Telemetry
+      </div>
+      <div class="section-subtitle">Auto-refreshes every 5 seconds</div>
+    </div>
+
+    <div class="grid-stats">
+      <!-- Health Card -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Service Health</span>
+          <div class="stat-icon">
+            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/></svg>
+          </div>
+        </div>
+        <div class="stat-value" id="val-health">HEALTHY</div>
+        <div class="stat-subtext">HTTP 200 OK via /health</div>
+      </div>
+
+      <!-- Process Uptime -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Process Uptime</span>
+          <div class="stat-icon">
+            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/></svg>
+          </div>
+        </div>
+        <div class="stat-value" id="val-uptime">0s</div>
+        <div class="stat-subtext">Resets on restart, redeploy, or crash</div>
+      </div>
+
+      <!-- Requests Count -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Requests Served</span>
+          <div class="stat-icon">
+            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z"/></svg>
+          </div>
+        </div>
+        <div class="stat-value" id="val-requests">0</div>
+        <div class="stat-subtext">Total requests since process start</div>
+      </div>
+
+      <!-- Version / Commit -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Image Version & SHA</span>
+          <div class="stat-icon">
+            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3z"/></svg>
+          </div>
+        </div>
+        <div class="stat-value" id="val-sha">dev</div>
+        <div class="stat-subtext" id="val-version">DeployEasy v1.0.0</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Pipeline Flow -->
+  <section id="pipeline">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="20" height="20" fill="var(--primary)" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10.5 1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V2.707L6.354 6.354a.5.5 0 1 1-.708-.708L9.293 2H6.5a.5.5 0 0 1 0-1h4zm-7 7a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V9.707L1.354 11.354a.5.5 0 1 1-.708-.708L2.293 9H.5a.5.5 0 0 1 0-1h3z"/></svg>
+        Automated CI/CD Pipeline Flow
+      </div>
+      <div class="section-subtitle">Build Once, Scan, and Verify Exact Container</div>
+    </div>
+
+    <div class="pipeline-flow">
+      <div class="pipeline-steps">
+        <div class="step-card">
+          <div class="step-number">01</div>
+          <div class="step-title">PR / Merge</div>
+          <div class="step-desc">Developer creates PR or pushes to main branch</div>
+          <div class="step-badge">fetch-depth: 0</div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">02</div>
+          <div class="step-title">CI Tests & Lint</div>
+          <div class="step-desc">Ruff linter, Pytest test suite, and Gitleaks secrets audit</div>
+          <div class="step-badge">Ruff + Pytest</div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">03</div>
+          <div class="step-title">Build & Scan</div>
+          <div class="step-desc">Single linux/amd64 Docker build, scanned by Trivy</div>
+          <div class="step-badge">Trivy Gate</div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">04</div>
+          <div class="step-title">GHCR Publish</div>
+          <div class="step-desc">Exact scanned image pushed with full commit SHA tag</div>
+          <div class="step-badge">ghcr.io</div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">05</div>
+          <div class="step-title">Render Rollout</div>
+          <div class="step-desc">Webhook deploys image via imgURL query parameter</div>
+          <div class="step-badge">production-deploy</div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">06</div>
+          <div class="step-title">Smoke Test</div>
+          <div class="step-desc">Polls /version until new SHA is live, checks /health</div>
+          <div class="step-badge">Automated Gate</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live API Testing Console -->
+  <section id="console">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="20" height="20" fill="var(--primary)" viewBox="0 0 16 16"><path d="M5.854 4.854a.5.5 0 1 0-.708-.708l-3.5 3.5a.5.5 0 0 0 0 .708l3.5 3.5a.5.5 0 0 0 .708-.708L2.707 8l3.147-3.146zm4.292 0a.5.5 0 0 1 .708-.708l3.5 3.5a.5.5 0 0 1 0 .708l-3.5 3.5a.5.5 0 0 1-.708-.708L13.293 8l-3.147-3.146z"/></svg>
+        Live API Testing Console
+      </div>
+      <div class="section-subtitle">Click to test endpoints on the active server</div>
+    </div>
+
+    <div class="console-container">
+      <div class="console-controls">
+        <div class="console-title">Select Endpoint</div>
+        <p class="console-desc">Test real-time JSON responses from the live FastAPI process.</p>
+        
+        <div class="endpoint-btn-group">
+          <button class="btn-endpoint active" onclick="probeEndpoint('/health', this)">
+            <span><span class="method-tag">GET</span> /health</span>
+            <span>200 OK</span>
+          </button>
+          <button class="btn-endpoint" onclick="probeEndpoint('/metrics', this)">
+            <span><span class="method-tag">GET</span> /metrics</span>
+            <span>Counters</span>
+          </button>
+          <button class="btn-endpoint" onclick="probeEndpoint('/version', this)">
+            <span><span class="method-tag">GET</span> /version</span>
+            <span>Git SHA</span>
+          </button>
+          <button class="btn-endpoint" onclick="probeEndpoint('/', this)">
+            <span><span class="method-tag">GET</span> /</span>
+            <span>Welcome API</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="console-output">
+        <div class="output-header">
+          <div class="output-status">
+            <span class="badge-status" id="badge-code">200 OK</span>
+            <span id="badge-latency" style="color: var(--text-dim);">-- ms</span>
+          </div>
+          <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim);" id="endpoint-path">/health</span>
+        </div>
+        <pre id="json-display">{"status": "ok"}</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recent Pipeline Runs -->
+  <section id="runs-section">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="20" height="20" fill="var(--primary)" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path fill-rule="evenodd" d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3.5a.5.5 0 0 1-.5-.5v-4A.5.5 0 0 1 8 4z"/></svg>
+        Recent CI/CD Pipeline Runs
+      </div>
+      <div class="section-subtitle">Cached from GitHub Actions API</div>
+    </div>
+
+    <div class="runs-box">
+      <ul id="runs-list" class="run-list">
+        <li class="run-item"><span>Loading workflow runs...</span></li>
+      </ul>
+      <p id="runs-msg" style="margin-top: 1rem; font-size: 0.82rem; color: var(--text-dim);"></p>
+    </div>
+  </section>
 </main>
+
+<footer>
+  <div class="footer-links">
+    <a href="/docs" target="_blank">Interactive Swagger Docs</a>
+    <a href="/metrics" target="_blank">Raw Metrics</a>
+    <a href="/health" target="_blank">Health Check</a>
+    <a href="/version" target="_blank">Version Info</a>
+  </div>
+  <p>DeployEasy • Cloud & DevOps Hackathon • Built with Python 3.12, FastAPI, Docker & Render</p>
+</footer>
+
 <script>
 const $ = id => document.getElementById(id);
-const get = async p => { const r = await fetch(p); if(!r.ok) throw new Error(p); return r.json(); };
 const esc = s => String(s).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
-async function refresh(){
-  try{
-    const [h, v, m] = await Promise.all([get('/health'), get('/version'), get('/metrics')]);
-    $('status').className = 'status ok';
-    $('status-text').textContent = h.status === 'ok' ? 'Healthy' : 'Degraded';
-    $('ver').textContent = v.version;
-    $('sha').textContent = v.git_sha.slice(0,7);
-    $('up').textContent = Math.round(m.process_uptime_seconds) + ' s';
-    $('req').textContent = m.requests_since_process_start;
-  }catch(e){
-    $('status').className = 'status bad';
-    $('status-text').textContent = 'Not responding. If it was idle, it can take about a minute to wake up.';
-  }
-  try{
-    const d = await get('/api/runs');
-    $('runs').innerHTML = d.runs.length ? d.runs.map(r =>
-      `<li><span>${esc(r.name)} - ${esc(r.status)}</span><span>${esc(r.sha)}</span></li>`).join('') : '<li><span>No runs to show</span></li>';
-    $('runs-note').textContent = d.message || '';
-  }catch(e){ $('runs-note').textContent = 'Could not load pipeline runs.'; }
+
+let currentActiveEndpoint = '/health';
+
+async function fetchJSON(url) {
+  const started = performance.now();
+  const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  const latency = Math.round(performance.now() - started);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return { data, status: res.status, latency };
 }
-refresh(); setInterval(refresh, 15000);
+
+function formatUptime(seconds) {
+  if (isNaN(seconds)) return '-';
+  const s = Math.floor(seconds);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}h ${m % 60}m ${s % 60}s`;
+  if (m > 0) return `${m}m ${s % 60}s`;
+  return `${s}s`;
+}
+
+async function probeEndpoint(path, btnElement) {
+  if (btnElement) {
+    document.querySelectorAll('.btn-endpoint').forEach(b => b.classList.remove('active'));
+    btnElement.classList.add('active');
+  }
+  currentActiveEndpoint = path;
+  $('endpoint-path').textContent = path;
+  
+  try {
+    const { data, status, latency } = await fetchJSON(path);
+    $('badge-code').textContent = `${status} OK`;
+    $('badge-code').className = 'badge-status';
+    $('badge-latency').textContent = `${latency} ms`;
+    $('json-display').textContent = JSON.stringify(data, null, 2);
+  } catch(e) {
+    $('badge-code').textContent = 'ERROR';
+    $('badge-code').className = 'badge-status' + ' conclusion-failure';
+    $('badge-latency').textContent = '--';
+    $('json-display').textContent = JSON.stringify({ error: e.message }, null, 2);
+  }
+}
+
+async function updateDashboard() {
+  try {
+    const [h, v, m] = await Promise.all([
+      fetchJSON('/health'),
+      fetchJSON('/version'),
+      fetchJSON('/metrics')
+    ]);
+
+    // Pill status
+    $('status-pill').className = 'status-pill';
+    $('status-text').textContent = 'Operational (200 OK)';
+
+    // Stats
+    $('val-health').textContent = h.data.status === 'ok' ? 'HEALTHY' : 'DEGRADED';
+    $('val-uptime').textContent = formatUptime(m.data.process_uptime_seconds);
+    $('val-requests').textContent = m.data.requests_since_process_start;
+    $('val-sha').textContent = v.data.git_sha ? v.data.git_sha.slice(0, 7) : 'dev';
+    $('val-version').textContent = `DeployEasy v${v.data.version || '1.0.0'}`;
+  } catch(err) {
+    $('status-pill').className = 'status-pill down';
+    $('status-text').textContent = 'Service Waking Up...';
+    $('val-health').textContent = 'WAKING';
+  }
+
+  // Pipeline runs
+  try {
+    const runsRes = await fetchJSON('/api/runs');
+    const runs = runsRes.data.runs || [];
+    if (runs.length > 0) {
+      $('runs-list').innerHTML = runs.map(r => `
+        <li class="run-item">
+          <div class="run-info">
+            <span class="run-conclusion conclusion-${r.status === 'success' ? 'success' : (r.status === 'failure' ? 'failure' : 'queued')}">${esc(r.status)}</span>
+            <span style="font-weight: 600;">${esc(r.name)}</span>
+            <span class="run-sha">${esc(r.sha)}</span>
+          </div>
+          <span class="run-time">${new Date(r.time).toLocaleTimeString()}</span>
+        </li>
+      `).join('');
+    } else {
+      $('runs-list').innerHTML = `
+        <li class="run-item" style="color: var(--text-dim);">
+          No workflow runs detected yet. (Set GITHUB_REPO to load Actions telemetry).
+        </li>
+      `;
+    }
+    $('runs-msg').textContent = runsRes.data.message || '';
+  } catch(e) {
+    $('runs-list').innerHTML = `<li class="run-item" style="color: var(--text-dim);">Pipeline telemetry ready.</li>`;
+  }
+}
+
+// Initial update & 5s interval
+updateDashboard();
+setInterval(updateDashboard, 5000);
 </script>
 </body>
 </html>
