@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeployEasy • Developer-First Cloud CI/CD & Deployment Observatory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #090a0f;
+  --bg-card: rgba(18, 20, 29, 0.7);
+  --bg-card-hover: rgba(26, 29, 43, 0.85);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(139, 92, 246, 0.5);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --primary: #8b5cf6;
+  --primary-glow: rgba(139, 92, 246, 0.25);
+  --accent: #6366f1;
+  --accent-pink: #ec4899;
+  --success: #10b981;
+  --success-glow: rgba(16, 185, 129, 0.25);
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background-color: var(--bg);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.ambient-glow {
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 900px;
+  height: 520px;
+  background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.16) 0%, rgba(99, 102, 241, 0.08) 45%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ambient-glow-2 {
+  position: absolute;
+  top: 1400px;
+  right: -100px;
+  width: 700px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.07) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Header */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(9, 10, 15, 0.85);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0.9rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: var(--text-main);
+}
+
+.logo-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 50%, var(--accent-pink) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px var(--primary-glow);
+}
+
+.logo-badge svg { width: 20px; height: 20px; fill: #fff; }
+
+.brand-text {
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.brand-text span { color: var(--primary); }
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.nav-links a:hover { color: var(--text-main); }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.btn-ghost {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  transition: color 0.2s;
+}
+
+.btn-ghost:hover { color: #fff; }
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.25rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px var(--primary-glow);
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(139, 92, 246, 0.4);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Hero Section */
+.hero {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 5rem 1.5rem 4rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1.1rem;
+  border-radius: 9999px;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #c4b5fd;
+  margin-bottom: 1.75rem;
+}
+
+.hero-title {
+  font-size: clamp(2.5rem, 5.5vw, 4.2rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  color: #fff;
+  margin-bottom: 1.5rem;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #c4b5fd 0%, #818cf8 40%, #f472b6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+  max-width: 760px;
+  margin: 0 auto 2.5rem;
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 3.5rem;
+}
+
+/* Pipeline Flow Hero Graphic */
+.pipeline-preview-card {
+  max-width: 1040px;
+  margin: 0 auto 5rem;
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1.75rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.pipeline-preview-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary), var(--accent), transparent);
+}
+
+.pipeline-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.85rem;
+}
+
+.pipeline-step-node {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 0.85rem;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.pipeline-step-node:hover {
+  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.4);
+  transform: translateY(-2px);
+}
+
+.step-num {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 0.25rem;
+}
+
+.step-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.25rem;
+}
+
+.step-detail {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* Section Common */
+section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 4rem 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.section-tag {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+  margin-bottom: 0.5rem;
+}
+
+.section-heading {
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 1rem;
+}
+
+.section-desc {
+  max-width: 650px;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  margin-bottom: 3rem;
+}
+
+/* Feature Grid */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.75rem;
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.feature-card:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(139, 92, 246, 0.35);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+.feature-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  margin-bottom: 1.15rem;
+}
+
+.feature-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #fff;
+}
+
+.feature-text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* Problem vs Solution Comparison Matrix */
+.matrix-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.matrix-table th {
+  padding: 1.1rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+}
+
+.matrix-table th:first-child { width: 35%; color: var(--text-muted); }
+.matrix-table th:nth-child(2) { width: 32.5%; color: #f87171; background: rgba(239, 68, 68, 0.04); }
+.matrix-table th:nth-child(3) { width: 32.5%; color: #34d399; background: rgba(16, 185, 129, 0.04); }
+
+.matrix-table td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.88rem;
+}
+
+.matrix-table tr:last-child td { border-bottom: none; }
+.matrix-table td:nth-child(2) { color: #fca5a5; background: rgba(239, 68, 68, 0.02); }
+.matrix-table td:nth-child(3) { color: #a7f3d0; background: rgba(16, 185, 129, 0.02); font-weight: 600; }
+
+/* Tech Strip */
+.tech-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  flex-wrap: wrap;
+  padding: 2rem 1.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.tech-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* CTA Banner */
+.cta-banner {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(99, 102, 241, 0.15) 50%, rgba(236, 72, 153, 0.12) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 20px;
+  padding: 3.5rem 2rem;
+  text-align: center;
+  margin: 4rem auto 2rem;
+}
+
+.cta-title {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 800;
+  margin-bottom: 1rem;
+}
+
+.cta-desc {
+  max-width: 600px;
+  margin: 0 auto 2rem;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+/* Footer */
+footer {
+  border-top: 1px solid var(--border);
+  background: rgba(9, 10, 15, 0.95);
+  padding: 3.5rem 1.5rem 2.5rem;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+}
+
+.footer-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.footer-links a { color: var(--text-muted); text-decoration: none; }
+.footer-links a:hover { color: var(--primary); }
+</style>
+</head>
+<body>
+
+<div class="ambient-glow"></div>
+<div class="ambient-glow-2"></div>
+
+<!-- 1. Navigation Bar -->
+<header>
+  <div class="header-container">
+    <a href="/" class="brand">
+      <div class="logo-badge">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <span class="brand-text">Deploy<span>Easy</span></span>
+    </a>
+
+    <ul class="nav-links">
+      <li><a href="#pipeline">Workflow</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#comparison">Why DeployEasy</a></li>
+      <li><a href="#security">Security</a></li>
+      <li><a href="/docs" target="_blank">Docs</a></li>
+    </ul>
+
+    <div class="header-actions">
+      <a href="/login" class="btn-ghost">Log in</a>
+      <a href="/dashboard" class="btn-primary">
+        Launch Dashboard
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/></svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- 2. Hero Section -->
+  <section class="hero">
+    <div class="hero-pill">
+      <span>🚀</span> Automated CI/CD • Verified Containers • Instant Rollback
+    </div>
+    
+    <h1 class="hero-title">
+      Stop Guessing.<br>
+      <span class="gradient-text">Deploy With Complete Confidence.</span>
+    </h1>
+
+    <p class="hero-subtitle">
+      The lightweight deployment observatory for engineering teams. Connect your GitHub Actions pipeline, audit container vulnerabilities with Trivy, validate health endpoints, and execute one-click rollbacks.
+    </p>
+
+    <div class="hero-actions">
+      <a href="/dashboard" class="btn-primary" style="padding: 0.8rem 1.6rem; font-size: 0.95rem;">
+        Open Live Dashboard
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/></svg>
+      </a>
+      <a href="https://github.com/harshit5afk/deployeasy" target="_blank" class="btn-secondary" style="padding: 0.8rem 1.6rem; font-size: 0.95rem;">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub Repository
+      </a>
+    </div>
+
+    <!-- 3. Pipeline Flow Graphic -->
+    <div id="pipeline" class="pipeline-preview-card">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
+        <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Build-Once, Verify & Smoke-Test Architecture</span>
+        <span style="font-size: 0.75rem; font-family: var(--font-mono); color: #34d399;">concurrency: production-deploy</span>
+      </div>
+
+      <div class="pipeline-steps-grid">
+        <div class="pipeline-step-node">
+          <div class="step-num">STAGE 01</div>
+          <div class="step-name">PR & Push</div>
+          <div class="step-detail">fetch-depth: 0 (Full Git history)</div>
+        </div>
+        <div class="pipeline-step-node">
+          <div class="step-num">STAGE 02</div>
+          <div class="step-name">Test & Lint</div>
+          <div class="step-detail">Ruff + Pytest + Gitleaks scan</div>
+        </div>
+        <div class="pipeline-step-node">
+          <div class="step-num">STAGE 03</div>
+          <div class="step-name">Build Once</div>
+          <div class="step-detail">linux/amd64 immutable image</div>
+        </div>
+        <div class="pipeline-step-node">
+          <div class="step-num">STAGE 04</div>
+          <div class="step-name">Trivy Gate</div>
+          <div class="step-detail">Blocks on HIGH/CRITICAL CVEs</div>
+        </div>
+        <div class="pipeline-step-node">
+          <div class="step-num">STAGE 05</div>
+          <div class="step-name">GHCR Publish</div>
+          <div class="step-detail">Tagged by exact commit SHA</div>
+        </div>
+        <div class="pipeline-step-node">
+          <div class="step-num">STAGE 06</div>
+          <div class="step-name">Smoke Test</div>
+          <div class="step-detail">Polls /version until SHA is live</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Core Features -->
+  <section id="features">
+    <div class="section-tag">Capabilities</div>
+    <h2 class="section-heading">Designed for High Reliability, Zero Clutter</h2>
+    <p class="section-desc">
+      Enterprise observability platforms are bloated and expensive. DeployEasy gives you the essentials small teams need to ship and operate cloud containers.
+    </p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon-badge">⏪</div>
+        <h3 class="feature-title">One-Click Instant Rollback</h3>
+        <p class="feature-text">
+          Never hunt through Git history under incident pressure. Select any past verified deployment and roll back production to that exact container image in seconds.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-badge">🎯</div>
+        <h3 class="feature-title">Pre-Deploy Readiness Score</h3>
+        <p class="feature-text">
+          Calculates a composite 0-100% confidence score across test assertions, vulnerability gates, secrets scans, fleet health, and rollback readiness before rollout.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-badge">🔍</div>
+        <h3 class="feature-title">Failure Log Digest</h3>
+        <p class="feature-text">
+          Parses raw CI/CD logs, detects stack traces, extracts the failure root cause, and provides developers with immediate, actionable remediation instructions.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-badge">🛡️</div>
+        <h3 class="feature-title">Security & Supply Chain</h3>
+        <p class="feature-text">
+          Integrated container scanning with Trivy, secrets detection with Gitleaks, Dependabot updates, and GitHub Actions pinned to full commit SHAs.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-badge">⚙️</div>
+        <h3 class="feature-title">Environment Variable Validator</h3>
+        <p class="feature-text">
+          Validates ports, database connection schemes, URLs, and detects accidentally committed template placeholders before bad configs reach production.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-badge">📡</div>
+        <h3 class="feature-title">Live Health & Telemetry</h3>
+        <p class="feature-text">
+          Continuous availability verification via `/health`, `/version`, and `/metrics`, tracking process uptime, requests handled, and live latency in milliseconds.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Problem vs Solution Comparison Matrix -->
+  <section id="comparison">
+    <div class="section-tag">Comparison</div>
+    <h2 class="section-heading">Why Small Teams Choose DeployEasy</h2>
+    <p class="section-desc">
+      See how DeployEasy solves common cloud infrastructure headaches faced by startups and fast-moving engineering teams.
+    </p>
+
+    <div class="matrix-container">
+      <table class="matrix-table">
+        <thead>
+          <tr>
+            <th>Scenario</th>
+            <th>Traditional CI/CD Setup</th>
+            <th>With DeployEasy</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight: 700;">Rollback During Outage</td>
+            <td>Manually hunt for a 40-character commit SHA in git history while production is down.</td>
+            <td>Click "Rollback" on the last green release card for instant container redeployment.</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Debugging Broken Builds</td>
+            <td>Scroll through 500 lines of unformatted runner logs to find the single failing step.</td>
+            <td>Automated Failure Digest extracts the root cause and suggests exact commands to fix.</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Configuration Drift</td>
+            <td>Deploys succeed in CI but crash in production due to malformed or missing env variables.</td>
+            <td>Environment Validator audits variables and protocol formats prior to promotion.</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Container Verification</td>
+            <td>Build an image in test, build it again in production, and hope versions match.</td>
+            <td>Build Once pattern: exactly the same scanned image is published and deployed.</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Post-Deploy Verification</td>
+            <td>Deploy webhook returns 200, but the container crashed on boot without notice.</td>
+            <td>Smoke test retries and polls `/version` to guarantee the exact new SHA is live.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 6. Technology Integration -->
+  <section id="security">
+    <div class="section-tag">Integrations & Architecture</div>
+    <h2 class="section-heading">Built on Standards You Already Trust</h2>
+    <p class="section-desc">
+      Works with your existing GitHub repository and container infrastructure. No vendor lock-in.
+    </p>
+
+    <div class="tech-strip">
+      <div class="tech-item">🐙 GitHub Actions</div>
+      <div class="tech-item">🐳 Docker Slim</div>
+      <div class="tech-item">📦 GitHub Packages (GHCR)</div>
+      <div class="tech-item">⚡ FastAPI & Python 3.12</div>
+      <div class="tech-item">🛡️ Trivy Security</div>
+      <div class="tech-item">🔑 Gitleaks</div>
+      <div class="tech-item">☁️ Render Cloud</div>
+    </div>
+
+    <!-- CTA Banner -->
+    <div class="cta-banner">
+      <h2 class="cta-title">Ready to Take Control of Your Deployments?</h2>
+      <p class="cta-desc">
+        Connect your repository, view real-time telemetry, audit container vulnerabilities, and gain instant rollback peace of mind.
+      </p>
+      <div style="display: flex; gap: 1rem; justify-content: center;">
+        <a href="/dashboard" class="btn-primary" style="padding: 0.8rem 1.8rem; font-size: 0.95rem;">
+          Open Dashboard
+        </a>
+        <a href="/login" class="btn-secondary" style="padding: 0.8rem 1.8rem; font-size: 0.95rem;">
+          Sign In
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-container">
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <span style="font-weight: 700; color: #fff;">DeployEasy</span>
+      <span>• Developer-First Cloud Observability</span>
+    </div>
+    <div class="footer-links">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/docs" target="_blank">Swagger API</a>
+      <a href="/health" target="_blank">Health Status</a>
+      <a href="https://github.com/harshit5afk/deployeasy" target="_blank">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
+

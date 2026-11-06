@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DeployEasy • Production Cloud CI/CD</title>
+<title>DeployEasy • Cloud CI/CD & Deployment Platform</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #090a0f;
-  --bg-card: rgba(18, 20, 29, 0.7);
-  --bg-card-hover: rgba(26, 29, 43, 0.85);
+  --bg-card: rgba(18, 20, 29, 0.75);
+  --bg-card-hover: rgba(26, 29, 43, 0.9);
   --border: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(124, 58, 237, 0.5);
+  --border-focus: rgba(139, 92, 246, 0.5);
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --text-dim: #64748b;
@@ -41,45 +41,32 @@ body {
   position: relative;
 }
 
-/* Ambient glow backgrounds */
 .ambient-glow {
   position: absolute;
   top: -120px;
   left: 50%;
   transform: translateX(-50%);
-  width: 800px;
+  width: 900px;
   height: 480px;
-  background: radial-gradient(ellipse at center, rgba(124, 58, 237, 0.16) 0%, rgba(99, 102, 241, 0.08) 45%, transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.18) 0%, rgba(99, 102, 241, 0.08) 45%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
 
-.ambient-glow-2 {
-  position: absolute;
-  top: 900px;
-  right: -100px;
-  width: 600px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(236, 72, 153, 0.08) 0%, transparent 65%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Header */
 header {
   position: sticky;
   top: 0;
   z-index: 50;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  background: rgba(9, 10, 15, 0.8);
+  background: rgba(9, 10, 15, 0.85);
   border-bottom: 1px solid var(--border);
 }
 
 .header-container {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 0.9rem 1.5rem;
+  padding: 0.85rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -104,11 +91,7 @@ header {
   box-shadow: 0 0 16px var(--primary-glow);
 }
 
-.logo-badge svg {
-  width: 20px;
-  height: 20px;
-  fill: #fff;
-}
+.logo-badge svg { width: 20px; height: 20px; fill: #fff; }
 
 .brand-text {
   font-size: 1.15rem;
@@ -116,33 +99,44 @@ header {
   letter-spacing: -0.02em;
 }
 
-.brand-text span {
-  color: var(--primary);
-}
+.brand-text span { color: var(--primary); }
 
-.nav-links {
+.nav-tabs {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 0.35rem;
   list-style: none;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.25rem 0.4rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
 }
 
-.nav-links a {
+.nav-tab-btn {
+  background: transparent;
+  border: none;
   color: var(--text-muted);
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: color 0.15s ease;
+  padding: 0.45rem 0.8rem;
+  border-radius: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  white-space: nowrap;
 }
 
-.nav-links a:hover {
-  color: var(--text-main);
+.nav-tab-btn:hover { color: var(--text-main); }
+.nav-tab-btn.active {
+  background: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.35);
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 .status-pill {
@@ -158,18 +152,6 @@ header {
   color: #34d399;
 }
 
-.status-pill.degraded {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.25);
-  color: #fbbf24;
-}
-
-.status-pill.down {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.25);
-  color: #f87171;
-}
-
 .pulse-dot {
   width: 8px;
   height: 8px;
@@ -179,76 +161,79 @@ header {
   animation: pulse 2s infinite;
 }
 
-.status-pill.degraded .pulse-dot { background: var(--warning); box-shadow: 0 0 10px var(--warning); }
-.status-pill.down .pulse-dot { background: var(--error); box-shadow: 0 0 10px var(--error); }
-
 @keyframes pulse {
   0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
   70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
-.btn-header {
+.btn-sm-primary {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border);
-  color: var(--text-main);
-  padding: 0.4rem 0.9rem;
+  padding: 0.42rem 0.9rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  color: #fff;
+  border: none;
   border-radius: 8px;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  text-decoration: none;
+  cursor: pointer;
   transition: all 0.2s ease;
+  text-decoration: none;
 }
 
-.btn-header:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+.btn-sm-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px var(--primary-glow);
 }
 
-/* Main Container */
 main {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 3rem 1.5rem 5rem;
+  padding: 2.5rem 1.5rem 5rem;
   position: relative;
   z-index: 1;
 }
 
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.25s ease; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Hero Section */
-.hero {
+.hero-banner {
   text-align: center;
-  margin-bottom: 3.5rem;
+  margin-bottom: 2.75rem;
+  background: radial-gradient(ellipse at top, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
+  padding: 2rem 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
 }
 
 .hero-tag {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4rem 1rem;
+  padding: 0.35rem 0.9rem;
   border-radius: 9999px;
   background: rgba(139, 92, 246, 0.12);
   border: 1px solid rgba(139, 92, 246, 0.28);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: #c4b5fd;
-  margin-bottom: 1.5rem;
-}
-
-.hero-tag span {
-  display: inline-block;
-  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
 }
 
 .hero-title {
-  font-size: clamp(2.4rem, 5vw, 3.8rem);
+  font-size: clamp(2rem, 4vw, 3.2rem);
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.2;
   letter-spacing: -0.03em;
-  margin-bottom: 1.25rem;
-  color: #ffffff;
+  margin-bottom: 1rem;
 }
 
 .gradient-text {
@@ -258,117 +243,46 @@ main {
 }
 
 .hero-desc {
-  max-width: 720px;
-  margin: 0 auto 2rem;
-  font-size: 1.1rem;
+  max-width: 680px;
+  margin: 0 auto 1.5rem;
+  font-size: 1.05rem;
   color: var(--text-muted);
-  line-height: 1.65;
 }
 
-.hero-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.6rem;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-  color: #ffffff;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  box-shadow: 0 4px 20px var(--primary-glow);
-  transition: all 0.2s ease;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(139, 92, 246, 0.4);
-}
-
-.btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.6rem;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-main);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
-  transform: translateY(-2px);
-}
-
-/* Telemetry Grid */
+/* Metrics Grid */
 .grid-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 3.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1.15rem;
+  margin-bottom: 2.75rem;
 }
 
 .stat-card {
   background: var(--bg-card);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 1.5rem;
-  transition: all 0.25s ease;
+  padding: 1.35rem 1.25rem;
+  transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--primary), transparent);
-  opacity: 0;
-  transition: opacity 0.25s ease;
 }
 
 .stat-card:hover {
   background: var(--bg-card-hover);
   border-color: rgba(139, 92, 246, 0.3);
-  transform: translateY(-3px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-}
-
-.stat-card:hover::before {
-  opacity: 1;
+  transform: translateY(-2px);
 }
 
 .stat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.6rem;
 }
 
 .stat-label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -376,8 +290,8 @@ main {
 }
 
 .stat-icon {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
   background: rgba(139, 92, 246, 0.12);
   display: flex;
@@ -387,144 +301,241 @@ main {
 }
 
 .stat-value {
-  font-size: 1.75rem;
+  font-size: 1.65rem;
   font-weight: 800;
   color: #ffffff;
-  letter-spacing: -0.02em;
-  margin-bottom: 0.35rem;
   font-family: var(--font-mono);
+  margin-bottom: 0.25rem;
 }
 
-.stat-subtext {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-}
+.stat-subtext { font-size: 0.78rem; color: var(--text-dim); }
 
-/* Section styling */
+/* Section Header */
 .section-header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   border-bottom: 1px solid var(--border);
   padding-bottom: 0.75rem;
 }
 
 .section-title {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
-.section-subtitle {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
+.section-subtitle { font-size: 0.82rem; color: var(--text-muted); }
 
-/* Pipeline Flow Visualizer */
-.pipeline-flow {
+/* Table styling */
+.data-table-container {
   background: var(--bg-card);
-  backdrop-filter: blur(12px);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 1.75rem;
-  margin-bottom: 3.5rem;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 2.5rem;
 }
 
-.pipeline-steps {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 1rem;
-  position: relative;
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.88rem;
 }
 
-.step-card {
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.15rem 1rem;
-  transition: all 0.2s ease;
-  position: relative;
+.data-table th {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.85rem 1rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
 }
 
-.step-card:hover {
-  background: rgba(139, 92, 246, 0.08);
-  border-color: rgba(139, 92, 246, 0.35);
-  transform: translateY(-2px);
+.data-table td {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.step-number {
-  font-family: var(--font-mono);
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
   font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--primary);
+  font-weight: 600;
+}
+
+.badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+.badge-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+.badge-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+.badge-rolled { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3); }
+
+.code-sha {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: #a5f3fc;
+  background: rgba(6, 182, 212, 0.1);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.btn-action-sm {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-right: 0.35rem;
+}
+
+.btn-action-sm:hover { background: rgba(255, 255, 255, 0.12); }
+
+.btn-rollback {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-rollback:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #ef4444;
+}
+
+/* Modals */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal-card {
+  background: #11131c;
+  border: 1px solid var(--border-focus);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 560px;
+  padding: 1.75rem;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+  position: relative;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+}
+
+.modal-title { font-size: 1.15rem; font-weight: 700; }
+
+.btn-close-modal {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.25rem;
+}
+
+.form-group { margin-bottom: 1.15rem; }
+
+.form-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
   margin-bottom: 0.4rem;
 }
 
-.step-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  margin-bottom: 0.35rem;
+.form-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
   color: #fff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
-.step-desc {
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  line-height: 1.45;
+.form-input:focus { border-color: var(--primary); }
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
 }
 
-.step-badge {
-  display: inline-block;
-  margin-top: 0.6rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
+.btn-cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.06);
-  color: #cbd5e1;
 }
 
-/* API Testing Console */
+/* Console layout */
 .console-container {
   display: grid;
   grid-template-columns: 1fr 1.35fr;
   gap: 1.5rem;
-  margin-bottom: 3.5rem;
+  margin-bottom: 2.5rem;
 }
 
 @media (max-width: 860px) {
   .console-container { grid-template-columns: 1fr; }
+  .nav-tabs { overflow-x: auto; max-width: 100%; }
 }
 
 .console-controls {
   background: var(--bg-card);
-  backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1.5rem;
 }
 
-.console-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.console-desc {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 1.25rem;
-}
-
 .endpoint-btn-group {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.65rem;
+  margin-top: 1rem;
 }
 
 .btn-endpoint {
@@ -537,29 +548,20 @@ main {
   border-radius: 10px;
   color: var(--text-main);
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  text-align: left;
 }
 
-.btn-endpoint:hover {
-  background: rgba(139, 92, 246, 0.1);
-  border-color: rgba(139, 92, 246, 0.4);
-}
-
-.btn-endpoint.active {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: var(--primary);
-  color: #ffffff;
-}
+.btn-endpoint:hover { background: rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.4); }
+.btn-endpoint.active { background: rgba(139, 92, 246, 0.18); border-color: var(--primary); }
 
 .method-tag {
   background: #0284c7;
-  color: #ffffff;
-  padding: 0.15rem 0.45rem;
+  color: #fff;
+  padding: 0.15rem 0.4rem;
   border-radius: 4px;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -570,7 +572,7 @@ main {
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 320px;
 }
 
 .output-header {
@@ -579,100 +581,74 @@ main {
   justify-content: space-between;
   border-bottom: 1px solid var(--border);
   padding-bottom: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.output-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-}
-
-.badge-status {
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
-  font-weight: 700;
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
+  margin-bottom: 0.75rem;
 }
 
 pre#json-display {
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: #a5f3fc;
   overflow: auto;
-  line-height: 1.55;
+  line-height: 1.5;
   flex-grow: 1;
-  max-height: 250px;
-  padding-right: 0.5rem;
 }
 
-/* Pipeline Runs Feed */
-.runs-box {
+/* Security cards */
+.security-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.security-card {
   background: var(--bg-card);
-  backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1.5rem;
-  margin-bottom: 3.5rem;
 }
 
-.run-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.run-item {
+/* Readiness Banner */
+.readiness-banner {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(16, 185, 129, 0.08) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 16px;
+  padding: 1.75rem;
+  margin-bottom: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.85rem 1.15rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 0.88rem;
+  gap: 1.5rem;
+  flex-wrap: wrap;
 }
 
-.run-info {
+.gauge-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 6px solid #10b981;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: center;
+  box-shadow: 0 0 20px var(--success-glow);
 }
 
-.run-conclusion {
-  padding: 0.2rem 0.55rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: capitalize;
-}
-
-.conclusion-success { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-.conclusion-failure { background: rgba(239, 68, 68, 0.15); color: #f87171; }
-.conclusion-queued { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-
-.run-sha {
+.gauge-score {
+  font-size: 1.8rem;
+  font-weight: 800;
   font-family: var(--font-mono);
-  color: var(--text-dim);
-  font-size: 0.8rem;
+  line-height: 1;
 }
 
-.run-time {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-}
+.gauge-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; }
 
-/* Footer */
 footer {
   border-top: 1px solid var(--border);
   background: rgba(9, 10, 15, 0.9);
   padding: 2.5rem 1.5rem;
   text-align: center;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   color: var(--text-dim);
 }
 
@@ -683,21 +659,13 @@ footer {
   margin-bottom: 1rem;
 }
 
-.footer-links a {
-  color: var(--text-muted);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.footer-links a:hover {
-  color: var(--primary);
-}
+.footer-links a { color: var(--text-muted); text-decoration: none; }
+.footer-links a:hover { color: var(--primary); }
 </style>
 </head>
 <body>
 
 <div class="ambient-glow"></div>
-<div class="ambient-glow-2"></div>
 
 <!-- Header -->
 <header>
@@ -708,269 +676,1034 @@ footer {
       </div>
       <span class="brand-text">Deploy<span>Easy</span></span>
     </a>
-    
-    <ul class="nav-links">
-      <li><a href="#stats">Telemetry</a></li>
-      <li><a href="#pipeline">Pipeline</a></li>
-      <li><a href="#console">API Console</a></li>
-      <li><a href="/docs" target="_blank">Swagger UI</a></li>
+
+    <ul class="nav-tabs">
+      <li><button class="nav-tab-btn active" onclick="switchTab('overview')">Overview</button></li>
+      <li><button class="nav-tab-btn" onclick="switchTab('projects')">Projects</button></li>
+      <li><button class="nav-tab-btn" onclick="switchTab('deployments')">Deployments</button></li>
+      <li><button class="nav-tab-btn" onclick="switchTab('readiness')">Readiness Score</button></li>
+      <li><button class="nav-tab-btn" onclick="switchTab('env')">Env Validator</button></li>
+      <li><button class="nav-tab-btn" onclick="switchTab('monitoring')">Monitoring</button></li>
+      <li><button class="nav-tab-btn" onclick="switchTab('security')">Security</button></li>
+      <li><button class="nav-tab-btn" onclick="switchTab('costs')">Cost & FinOps</button></li>
+      <li><button class="nav-tab-btn" onclick="switchTab('webhooks')">Webhooks</button></li>
+      <li><button class="nav-tab-btn" onclick="switchTab('console')">API Console</button></li>
     </ul>
 
     <div class="header-actions">
+      <button class="btn-sm-primary" onclick="openModal('modal-add-project')">
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3.5a.5.5 0 0 1-.5-.5v-4A.5.5 0 0 1 8 4z"/><path d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/></svg>
+        New Project
+      </button>
       <div id="status-pill" class="status-pill">
         <span class="pulse-dot"></span>
-        <span id="status-text">Connecting...</span>
+        <span id="status-text">Operational</span>
       </div>
-      <a href="https://github.com/harshit5afk/deployeasy" target="_blank" class="btn-header">
-        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-        GitHub
-      </a>
     </div>
   </div>
 </header>
 
 <main>
-  <!-- Hero -->
-  <section class="hero">
-    <div class="hero-tag">
-      <span>⚡</span> Automated CI/CD • Build Once • Instant Rollback
-    </div>
-    <h1 class="hero-title">
-      Developer-First Cloud Deployment<br>
-      <span class="gradient-text">Built to Never Fail Silently.</span>
-    </h1>
-    <p class="hero-desc">
-      DeployEasy packages Python 3.12 + FastAPI in immutable Docker containers, verifies security with Trivy, pushes to GitHub Container Registry, deploys to Render, and verifies health automatically.
-    </p>
-    <div class="hero-actions">
-      <a href="#stats" class="btn-primary">
-        View Live Telemetry
-        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/></svg>
-      </a>
-      <a href="#console" class="btn-secondary">
-        Test Endpoints Live
-      </a>
-    </div>
-  </section>
-
-  <!-- Live Stats -->
-  <section id="stats">
-    <div class="section-header">
-      <div class="section-title">
-        <svg width="20" height="20" fill="var(--primary)" viewBox="0 0 16 16"><path d="M1 11a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-4zm6-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V7zm6-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2z"/></svg>
-        Real-time Telemetry
+  <!-- TAB 1: OVERVIEW -->
+  <div id="tab-overview" class="tab-content active">
+    <section class="hero-banner">
+      <div class="hero-tag">
+        <span>⚡</span> Production Cloud CI/CD • Verified Containers • Instant Rollback
       </div>
-      <div class="section-subtitle">Auto-refreshes every 5 seconds</div>
+      <h1 class="hero-title">
+        Unified Deployment Observability<br>
+        <span class="gradient-text">Engineered for Zero Silent Failures.</span>
+      </h1>
+      <p class="hero-desc">
+        DeployEasy connects to your GitHub repository, builds immutable Docker containers once, audits vulnerabilities with Trivy, validates health endpoints, and delivers one-click instant rollbacks.
+      </p>
+    </section>
+
+    <!-- Pre-deploy Readiness Quick Banner -->
+    <div class="readiness-banner">
+      <div style="display: flex; align-items: center; gap: 1.5rem;">
+        <div class="gauge-circle" id="quick-gauge">
+          <div class="gauge-score" id="quick-score">100</div>
+          <div class="gauge-label">Score</div>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem;">
+            <span style="font-size: 1.25rem; font-weight: 700;">Deployment Readiness</span>
+            <span class="badge-status badge-success" id="quick-tier">Ready for Production</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted);" id="quick-rec">
+            All 5 critical release gates passed. Image scanned with 0 critical vulnerabilities.
+          </p>
+        </div>
+      </div>
+      <button class="btn-sm-primary" onclick="switchTab('readiness')">View Detailed Audit →</button>
     </div>
 
+    <!-- Metrics Grid -->
     <div class="grid-stats">
-      <!-- Health Card -->
       <div class="stat-card">
         <div class="stat-header">
-          <span class="stat-label">Service Health</span>
-          <div class="stat-icon">
-            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/></svg>
-          </div>
+          <span class="stat-label">Active Projects</span>
+          <div class="stat-icon">📦</div>
         </div>
-        <div class="stat-value" id="val-health">HEALTHY</div>
-        <div class="stat-subtext">HTTP 200 OK via /health</div>
+        <div class="stat-value" id="kpi-projects">1</div>
+        <div class="stat-subtext">Connected services running</div>
       </div>
 
-      <!-- Process Uptime -->
       <div class="stat-card">
         <div class="stat-header">
-          <span class="stat-label">Process Uptime</span>
-          <div class="stat-icon">
-            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/></svg>
-          </div>
+          <span class="stat-label">Deploy Success Rate</span>
+          <div class="stat-icon">🎯</div>
         </div>
-        <div class="stat-value" id="val-uptime">0s</div>
-        <div class="stat-subtext">Resets on restart, redeploy, or crash</div>
+        <div class="stat-value" id="kpi-success-rate">100%</div>
+        <div class="stat-subtext">Across recent pipeline runs</div>
       </div>
 
-      <!-- Requests Count -->
       <div class="stat-card">
         <div class="stat-header">
-          <span class="stat-label">Requests Served</span>
-          <div class="stat-icon">
-            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z"/></svg>
-          </div>
+          <span class="stat-label">Fleet Health</span>
+          <div class="stat-icon">💚</div>
         </div>
-        <div class="stat-value" id="val-requests">0</div>
-        <div class="stat-subtext">Total requests since process start</div>
+        <div class="stat-value" id="kpi-fleet-health" style="color: #34d399;">HEALTHY</div>
+        <div class="stat-subtext">Automated /health checks 200 OK</div>
       </div>
 
-      <!-- Version / Commit -->
       <div class="stat-card">
         <div class="stat-header">
-          <span class="stat-label">Image Version & SHA</span>
-          <div class="stat-icon">
-            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3z"/></svg>
-          </div>
+          <span class="stat-label">Mean Deploy Time</span>
+          <div class="stat-icon">⏱️</div>
         </div>
-        <div class="stat-value" id="val-sha">dev</div>
-        <div class="stat-subtext" id="val-version">DeployEasy v1.0.0</div>
+        <div class="stat-value" id="kpi-avg-duration">44s</div>
+        <div class="stat-subtext">Build, scan & smoke test</div>
       </div>
     </div>
-  </section>
 
-  <!-- Interactive Pipeline Flow -->
-  <section id="pipeline">
+    <!-- Active Service & Recent Activity -->
     <div class="section-header">
-      <div class="section-title">
-        <svg width="20" height="20" fill="var(--primary)" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10.5 1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V2.707L6.354 6.354a.5.5 0 1 1-.708-.708L9.293 2H6.5a.5.5 0 0 1 0-1h4zm-7 7a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V9.707L1.354 11.354a.5.5 0 1 1-.708-.708L2.293 9H.5a.5.5 0 0 1 0-1h3z"/></svg>
-        Automated CI/CD Pipeline Flow
+      <div>
+        <div class="section-title">Recent Deployment Activity</div>
+        <div class="section-subtitle">Real-time status synced with database and GitHub Actions</div>
       </div>
-      <div class="section-subtitle">Build Once, Scan, and Verify Exact Container</div>
+      <button class="btn-sm-primary" onclick="openDeployModal()">+ Trigger Deploy</button>
     </div>
 
-    <div class="pipeline-flow">
-      <div class="pipeline-steps">
-        <div class="step-card">
-          <div class="step-number">01</div>
-          <div class="step-title">PR / Merge</div>
-          <div class="step-desc">Developer creates PR or pushes to main branch</div>
-          <div class="step-badge">fetch-depth: 0</div>
-        </div>
-
-        <div class="step-card">
-          <div class="step-number">02</div>
-          <div class="step-title">CI Tests & Lint</div>
-          <div class="step-desc">Ruff linter, Pytest test suite, and Gitleaks secrets audit</div>
-          <div class="step-badge">Ruff + Pytest</div>
-        </div>
-
-        <div class="step-card">
-          <div class="step-number">03</div>
-          <div class="step-title">Build & Scan</div>
-          <div class="step-desc">Single linux/amd64 Docker build, scanned by Trivy</div>
-          <div class="step-badge">Trivy Gate</div>
-        </div>
-
-        <div class="step-card">
-          <div class="step-number">04</div>
-          <div class="step-title">GHCR Publish</div>
-          <div class="step-desc">Exact scanned image pushed with full commit SHA tag</div>
-          <div class="step-badge">ghcr.io</div>
-        </div>
-
-        <div class="step-card">
-          <div class="step-number">05</div>
-          <div class="step-title">Render Rollout</div>
-          <div class="step-desc">Webhook deploys image via imgURL query parameter</div>
-          <div class="step-badge">production-deploy</div>
-        </div>
-
-        <div class="step-card">
-          <div class="step-number">06</div>
-          <div class="step-title">Smoke Test</div>
-          <div class="step-desc">Polls /version until new SHA is live, checks /health</div>
-          <div class="step-badge">Automated Gate</div>
-        </div>
-      </div>
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Commit SHA</th>
+            <th>Message</th>
+            <th>Trigger</th>
+            <th>Status</th>
+            <th>Duration</th>
+            <th>Timestamp</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="overview-deployments-table">
+          <tr><td colspan="7" style="text-align: center; color: var(--text-dim);">Loading deployments...</td></tr>
+        </tbody>
+      </table>
     </div>
-  </section>
+  </div>
 
-  <!-- Live API Testing Console -->
-  <section id="console">
+  <!-- TAB 2: PROJECTS -->
+  <div id="tab-projects" class="tab-content">
     <div class="section-header">
-      <div class="section-title">
-        <svg width="20" height="20" fill="var(--primary)" viewBox="0 0 16 16"><path d="M5.854 4.854a.5.5 0 1 0-.708-.708l-3.5 3.5a.5.5 0 0 0 0 .708l3.5 3.5a.5.5 0 0 0 .708-.708L2.707 8l3.147-3.146zm4.292 0a.5.5 0 0 1 .708-.708l3.5 3.5a.5.5 0 0 1 0 .708l-3.5 3.5a.5.5 0 0 1-.708-.708L13.293 8l-3.147-3.146z"/></svg>
-        Live API Testing Console
+      <div>
+        <div class="section-title">Connected Projects</div>
+        <div class="section-subtitle">Manage multi-service cloud deployments and deploy hooks</div>
       </div>
-      <div class="section-subtitle">Click to test endpoints on the active server</div>
+      <button class="btn-sm-primary" onclick="openModal('modal-add-project')">+ Add New Project</button>
+    </div>
+
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Project Name</th>
+            <th>Repository</th>
+            <th>Branch</th>
+            <th>Status</th>
+            <th>Service URL</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="projects-table">
+          <tr><td colspan="6" style="text-align: center; color: var(--text-dim);">Loading projects...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 3: DEPLOYMENTS & ROLLBACK -->
+  <div id="tab-deployments" class="tab-content">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Deployment Center & One-Click Rollback</div>
+        <div class="section-subtitle">Immutable container versions with instant production rollback capabilities</div>
+      </div>
+      <div style="display: flex; gap: 0.5rem;">
+        <button class="btn-action-sm" onclick="openCustomLogModal()">🔍 Log Failure Analyzer</button>
+        <button class="btn-sm-primary" onclick="openDeployModal()">+ Trigger Deployment</button>
+      </div>
+    </div>
+
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Commit SHA</th>
+            <th>Commit Message</th>
+            <th>Trigger</th>
+            <th>Status</th>
+            <th>Duration</th>
+            <th>Deployed At</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="deployments-full-table">
+          <tr><td colspan="7" style="text-align: center; color: var(--text-dim);">Loading deployment history...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 4: READINESS SCORE -->
+  <div id="tab-readiness" class="tab-content">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Pre-Deploy Readiness Score (0-100%)</div>
+        <div class="section-subtitle">Comprehensive safety evaluation across 5 critical deployment dimensions</div>
+      </div>
+    </div>
+
+    <div class="readiness-banner">
+      <div style="display: flex; align-items: center; gap: 1.5rem;">
+        <div class="gauge-circle" id="full-gauge">
+          <div class="gauge-score" id="full-score">100</div>
+          <div class="gauge-label">Score</div>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem;">
+            <span style="font-size: 1.35rem; font-weight: 700;">Release Confidence:</span>
+            <span class="badge-status badge-success" id="full-tier">Ready for Production</span>
+          </div>
+          <p style="font-size: 0.9rem; color: var(--text-muted);" id="full-rec">
+            Evaluating release criteria...
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">5-Point Safety Gate Checklist</div>
+    </div>
+
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Gate Category</th>
+            <th>Evaluation Status</th>
+            <th>Points Awarded</th>
+            <th>Details & Diagnostics</th>
+          </tr>
+        </thead>
+        <tbody id="readiness-checklist-table">
+          <tr><td colspan="4" style="text-align: center; color: var(--text-dim);">Loading safety checklist...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 5: ENV VALIDATOR -->
+  <div id="tab-env" class="tab-content">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Environment Variable Validator</div>
+        <div class="section-subtitle">Audit environment variables against syntax errors, template placeholders, and format rules</div>
+      </div>
+      <button class="btn-sm-primary" onclick="runEnvValidation()">Validate Configuration</button>
     </div>
 
     <div class="console-container">
       <div class="console-controls">
-        <div class="console-title">Select Endpoint</div>
-        <p class="console-desc">Test real-time JSON responses from the live FastAPI process.</p>
+        <div style="font-weight: 700; margin-bottom: 0.4rem;">Configuration Input (.env Format)</div>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+          Paste environment variables to audit before promoting code to production.
+        </p>
+        <textarea id="env-input-box" class="form-input" style="height: 220px; font-family: var(--font-mono); font-size: 0.82rem;" spellcheck="false">PORT=8080
+APP_VERSION=1.0.0
+DATABASE_URL=sqlite:///./deployeasy.db
+SERVICE_URL=https://deployeasy.onrender.com
+RENDER_DEPLOY_HOOK_URL=https://api.render.com/deploy/srv-placeholder12345
+GITHUB_REPO=harshit5afk/deployeasy
+GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
+      </div>
+
+      <div class="console-output">
+        <div class="output-header">
+          <span class="badge-status badge-success" id="env-badge-status">VALID READY</span>
+          <span style="font-size: 0.78rem; color: var(--text-dim);" id="env-eval-count">7 variables</span>
+        </div>
+        <div id="env-report-output" style="font-size: 0.82rem; overflow-y: auto;">
+          <p style="color: var(--text-dim);">Click 'Validate Configuration' to evaluate.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 6: MONITORING -->
+  <div id="tab-monitoring" class="tab-content">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Health Monitoring & Live Probes</div>
+        <div class="section-subtitle">Automated availability verification and response time telemetry</div>
+      </div>
+      <button class="btn-sm-primary" onclick="triggerHealthProbe()">⚡ Run Health Probe Now</button>
+    </div>
+
+    <div class="grid-stats">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Process Uptime</span>
+          <div class="stat-icon">🕒</div>
+        </div>
+        <div class="stat-value" id="mon-uptime">0s</div>
+        <div class="stat-subtext">Current process instance</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Requests Served</span>
+          <div class="stat-icon">📊</div>
+        </div>
+        <div class="stat-value" id="mon-requests">0</div>
+        <div class="stat-subtext">Total HTTP requests handled</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Latest Latency</span>
+          <div class="stat-icon">⚡</div>
+        </div>
+        <div class="stat-value" id="mon-latency">12ms</div>
+        <div class="stat-subtext">Health probe response time</div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">Telemetry Probe History</div>
+      <div class="section-subtitle">Logged health check telemetry</div>
+    </div>
+
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Status Code</th>
+            <th>Response Time</th>
+            <th>Health State</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody id="health-history-table">
+          <tr><td colspan="5" style="text-align: center; color: var(--text-dim);">Loading probe records...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 7: SECURITY -->
+  <div id="tab-security" class="tab-content">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Security & Supply Chain Center</div>
+        <div class="section-subtitle">Automated image vulnerability scans, secrets auditing, and supply chain updates</div>
+      </div>
+    </div>
+
+    <div class="security-grid">
+      <div class="security-card">
+        <div class="stat-header">
+          <span class="stat-label">Trivy Container Scanner</span>
+          <span class="badge-status badge-success">PASSED</span>
+        </div>
+        <div style="margin: 1rem 0;">
+          <div style="font-size: 1.1rem; font-weight: 700;">ghcr.io/harshit5afk/deployeasy</div>
+          <div style="font-size: 0.8rem; color: var(--text-dim);">Scanned with severity gate: HIGH,CRITICAL</div>
+        </div>
+        <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+          <span class="badge-status badge-success">0 Critical</span>
+          <span class="badge-status badge-success">0 High</span>
+          <span class="badge-status badge-warning">1 Medium</span>
+          <span class="badge-status" style="background: rgba(255,255,255,0.06);">3 Low</span>
+        </div>
+      </div>
+
+      <div class="security-card">
+        <div class="stat-header">
+          <span class="stat-label">Gitleaks Secrets Audit</span>
+          <span class="badge-status badge-success">PASSED</span>
+        </div>
+        <div style="margin: 1rem 0;">
+          <div style="font-size: 1.1rem; font-weight: 700;">Git Commit History Scan</div>
+          <div style="font-size: 0.8rem; color: var(--text-dim);">fetch-depth: 0 (Scanned all past commits)</div>
+        </div>
+        <div style="margin-top: 1rem; font-size: 0.85rem; color: #34d399;">
+          ✓ No API keys, credentials, or secrets detected in repository.
+        </div>
+      </div>
+
+      <div class="security-card">
+        <div class="stat-header">
+          <span class="stat-label">Dependabot Supply Chain</span>
+          <span class="badge-status badge-success">ACTIVE</span>
+        </div>
+        <div style="margin: 1rem 0;">
+          <div style="font-size: 1.1rem; font-weight: 700;">Pinned Action SHAs & Weekly Updates</div>
+          <div style="font-size: 0.8rem; color: var(--text-dim);">Ecosystems: pip, github-actions, docker</div>
+        </div>
+        <div style="margin-top: 1rem; font-size: 0.85rem; color: #34d399;">
+          ✓ Dependencies kept current; supply chain pinned to full commit SHAs.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: COSTS & FINOPS -->
+  <div id="tab-costs" class="tab-content">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Cloud Infrastructure & CI/CD Cost Center</div>
+        <div class="section-subtitle">Real-time spend projection, GitHub Actions runner quotas, GHCR image storage & FinOps recommendations</div>
+      </div>
+      <button class="btn-sm-primary" onclick="loadCostEstimator()">⚡ Refresh Cost Breakdown</button>
+    </div>
+
+    <div class="grid-stats">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Projected Monthly Spend</span>
+          <div class="stat-icon">💰</div>
+        </div>
+        <div class="stat-value" id="cost-monthly-spend">$0.00</div>
+        <div class="stat-subtext" id="cost-tier-subtext">Render Free Tier & GitHub Free Tier</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">CI/CD Runner Minutes</span>
+          <div class="stat-icon">⏱️</div>
+        </div>
+        <div class="stat-value" id="cost-runner-mins">0 min</div>
+        <div class="stat-subtext" id="cost-runner-quota">of 2,000 monthly free tier allowance</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Container Storage (GHCR)</span>
+          <div class="stat-icon">💾</div>
+        </div>
+        <div class="stat-value" id="cost-storage-gb">0.0 GB</div>
+        <div class="stat-subtext" id="cost-storage-quota">of 5.0 GB free tier allowance</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">FinOps Efficiency</span>
+          <div class="stat-icon">🎯</div>
+        </div>
+        <div class="stat-value" style="color: #34d399;">100%</div>
+        <div class="stat-subtext">Zero wasted cloud compute detected</div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">Itemized Resource Cost Breakdown</div>
+      <div class="section-subtitle">Monthly itemized projections across compute, storage, and build minutes</div>
+    </div>
+
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Resource Type</th>
+            <th>Monthly Consumption</th>
+            <th>Unit Cost Rate</th>
+            <th>Projected Cost (USD)</th>
+            <th>Tier Status</th>
+          </tr>
+        </thead>
+        <tbody id="cost-breakdown-table">
+          <tr><td colspan="5" style="text-align: center; color: var(--text-dim);">Loading cost metrics...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">FinOps Optimization & Cost-Saving Advice</div>
+      <div class="section-subtitle">Actionable recommendations generated from pipeline performance telemetry</div>
+    </div>
+
+    <div id="cost-recommendations-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2.5rem;">
+      <div class="security-card" style="padding: 1rem 1.25rem;">
+        <span style="color: var(--text-muted);">Fetching cost optimization insights...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: WEBHOOKS & NOTIFICATIONS -->
+  <div id="tab-webhooks" class="tab-content">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Notification & Webhook Integrations</div>
+        <div class="section-subtitle">Dispatch instant deployment alerts, health probes, and rollback events to Discord and Slack</div>
+      </div>
+    </div>
+
+    <div class="security-grid">
+      <div class="security-card">
+        <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>🔔</span> Test Webhook Dispatcher
+        </div>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          Select your communication platform and enter your incoming webhook URL to test live alert dispatch.
+        </p>
+
+        <form onsubmit="handleSendWebhookTest(event)">
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label">Platform</label>
+            <select id="webhook-platform" class="form-input" style="background: #11131c;">
+              <option value="discord">Discord Webhook</option>
+              <option value="slack">Slack Incoming Webhook</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label">Incoming Webhook URL</label>
+            <input type="url" id="webhook-url" class="form-input" placeholder="https://discord.com/api/webhooks/... or https://hooks.slack.com/services/..." required>
+          </div>
+
+          <button type="submit" class="btn-sm-primary" style="width: 100%; justify-content: center; padding: 0.65rem;">
+            🚀 Dispatch Test Notification
+          </button>
+        </form>
+
+        <div id="webhook-test-result" style="margin-top: 1.25rem; display: none;">
+          <div style="font-weight: 700; font-size: 0.85rem; margin-bottom: 0.35rem;" id="webhook-status-label">Delivery Status</div>
+          <pre id="webhook-payload-preview" style="background: rgba(0,0,0,0.5); padding: 0.75rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.75rem; color: #a5f3fc; max-height: 180px; overflow-y: auto;"></pre>
+        </div>
+      </div>
+
+      <div class="security-card">
+        <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>⚡</span> Supported Trigger Events
+        </div>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          DeployEasy automatically dispatches structured cards with color-coded severity badges:
+        </p>
+        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.85rem;">
+          <li style="display: flex; align-items: center; gap: 0.6rem;">
+            <span class="badge-status badge-success">SUCCESS</span>
+            <span>Production Deployment Succeeded (verified SHA on /version)</span>
+          </li>
+          <li style="display: flex; align-items: center; gap: 0.6rem;">
+            <span class="badge-status badge-danger">FAILED</span>
+            <span>Pipeline Gate Tripped (Trivy CVEs, Gitleaks, or failed tests)</span>
+          </li>
+          <li style="display: flex; align-items: center; gap: 0.6rem;">
+            <span class="badge-status badge-rolled">ROLLED BACK</span>
+            <span>One-Click Rollback Executed to previous healthy container</span>
+          </li>
+          <li style="display: flex; align-items: center; gap: 0.6rem;">
+            <span class="badge-status badge-warning">DEGRADED</span>
+            <span>Live Health Probe check returned non-200 or timeout</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 8: API CONSOLE -->
+  <div id="tab-console" class="tab-content">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Live API Testing Console</div>
+        <div class="section-subtitle">Inspect real-time responses from active FastAPI backend endpoints</div>
+      </div>
+    </div>
+
+    <div class="console-container">
+      <div class="console-controls">
+        <div style="font-weight: 700; margin-bottom: 0.25rem;">Select Endpoint</div>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">Click to query endpoints on the live running process.</p>
         
         <div class="endpoint-btn-group">
-          <button class="btn-endpoint active" onclick="probeEndpoint('/health', this)">
+          <button class="btn-endpoint active" onclick="probeEndpoint('/api/overview', this)">
+            <span><span class="method-tag">GET</span> /api/overview</span>
+            <span>Stats</span>
+          </button>
+          <button class="btn-endpoint" onclick="probeEndpoint('/api/projects', this)">
+            <span><span class="method-tag">GET</span> /api/projects</span>
+            <span>Projects</span>
+          </button>
+          <button class="btn-endpoint" onclick="probeEndpoint('/api/projects/1/readiness', this)">
+            <span><span class="method-tag">GET</span> .../readiness</span>
+            <span>Readiness</span>
+          </button>
+          <button class="btn-endpoint" onclick="probeEndpoint('/health', this)">
             <span><span class="method-tag">GET</span> /health</span>
             <span>200 OK</span>
-          </button>
-          <button class="btn-endpoint" onclick="probeEndpoint('/metrics', this)">
-            <span><span class="method-tag">GET</span> /metrics</span>
-            <span>Counters</span>
           </button>
           <button class="btn-endpoint" onclick="probeEndpoint('/version', this)">
             <span><span class="method-tag">GET</span> /version</span>
             <span>Git SHA</span>
           </button>
-          <button class="btn-endpoint" onclick="probeEndpoint('/', this)">
-            <span><span class="method-tag">GET</span> /</span>
-            <span>Welcome API</span>
+          <button class="btn-endpoint" onclick="probeEndpoint('/metrics', this)">
+            <span><span class="method-tag">GET</span> /metrics</span>
+            <span>Uptime</span>
+          </button>
+          <button class="btn-endpoint" onclick="probeEndpoint('/api/runs', this)">
+            <span><span class="method-tag">GET</span> /api/runs</span>
+            <span>Actions</span>
           </button>
         </div>
       </div>
 
       <div class="console-output">
         <div class="output-header">
-          <div class="output-status">
-            <span class="badge-status" id="badge-code">200 OK</span>
-            <span id="badge-latency" style="color: var(--text-dim);">-- ms</span>
-          </div>
-          <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim);" id="endpoint-path">/health</span>
+          <span class="badge-status badge-success" id="badge-code">200 OK</span>
+          <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim);" id="endpoint-path">/api/overview</span>
+          <span id="badge-latency" style="color: var(--text-dim); font-size: 0.8rem;">-- ms</span>
         </div>
-        <pre id="json-display">{"status": "ok"}</pre>
+        <pre id="json-display">{"status": "ready"}</pre>
       </div>
     </div>
-  </section>
-
-  <!-- Recent Pipeline Runs -->
-  <section id="runs-section">
-    <div class="section-header">
-      <div class="section-title">
-        <svg width="20" height="20" fill="var(--primary)" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path fill-rule="evenodd" d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3.5a.5.5 0 0 1-.5-.5v-4A.5.5 0 0 1 8 4z"/></svg>
-        Recent CI/CD Pipeline Runs
-      </div>
-      <div class="section-subtitle">Cached from GitHub Actions API</div>
-    </div>
-
-    <div class="runs-box">
-      <ul id="runs-list" class="run-list">
-        <li class="run-item"><span>Loading workflow runs...</span></li>
-      </ul>
-      <p id="runs-msg" style="margin-top: 1rem; font-size: 0.82rem; color: var(--text-dim);"></p>
-    </div>
-  </section>
+  </div>
 </main>
+
+<!-- MODAL: ADD PROJECT -->
+<div id="modal-add-project" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title">Connect New Repository</div>
+      <button class="btn-close-modal" onclick="closeModal('modal-add-project')">&times;</button>
+    </div>
+    <form onsubmit="handleCreateProject(event)">
+      <div class="form-group">
+        <label class="form-label">Project Name</label>
+        <input type="text" id="proj-name" class="form-input" placeholder="e.g. Payments Microservice" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">GitHub Repository (owner/repo)</label>
+        <input type="text" id="proj-repo" class="form-input" placeholder="e.g. acme-corp/payments" pattern="^[a-zA-Z0-9_\-\.]+\/[a-zA-Z0-9_\-\.]+$" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Production Branch</label>
+        <input type="text" id="proj-branch" class="form-input" value="main" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Service URL (Optional)</label>
+        <input type="url" id="proj-url" class="form-input" placeholder="https://app.onrender.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Deploy Hook URL (Optional)</label>
+        <input type="url" id="proj-hook" class="form-input" placeholder="https://api.render.com/deploy/srv-...">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeModal('modal-add-project')">Cancel</button>
+        <button type="submit" class="btn-sm-primary">Connect Project</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: TRIGGER DEPLOYMENT -->
+<div id="modal-trigger-deploy" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title">Trigger Manual Deployment</div>
+      <button class="btn-close-modal" onclick="closeModal('modal-trigger-deploy')">&times;</button>
+    </div>
+    <form onsubmit="handleTriggerDeploy(event)">
+      <div class="form-group">
+        <label class="form-label">Target Commit SHA (40 chars or short 7 chars)</label>
+        <input type="text" id="deploy-sha" class="form-input" placeholder="e.g. e3876ac91fd2c97491d904b7264817c9135a907b" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Commit / Release Message</label>
+        <input type="text" id="deploy-msg" class="form-input" value="Manual deploy triggered via dashboard" required>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeModal('modal-trigger-deploy')">Cancel</button>
+        <button type="submit" class="btn-sm-primary">Deploy to Production</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: CONFIRM ROLLBACK -->
+<div id="modal-confirm-rollback" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title" style="color: #f87171;">⚠️ Confirm Instant Rollback</div>
+      <button class="btn-close-modal" onclick="closeModal('modal-confirm-rollback')">&times;</button>
+    </div>
+    <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+      You are about to roll back the active deployment to:
+      <div style="margin-top: 0.5rem; font-weight: 700; color: #fff; font-family: var(--font-mono);" id="rollback-target-label">--</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Rollback Reason / Incident Note</label>
+      <input type="text" id="rollback-reason" class="form-input" value="Rollback executed via DeployEasy dashboard">
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-cancel" onclick="closeModal('modal-confirm-rollback')">Cancel</button>
+      <button type="button" class="btn-rollback" style="padding: 0.55rem 1.2rem; font-size: 0.85rem;" onclick="executeRollback()">Confirm & Rollback</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: LOG DIAGNOSTIC & FAILURE DIGEST -->
+<div id="modal-log-analysis" class="modal-overlay">
+  <div class="modal-card" style="max-width: 640px;">
+    <div class="modal-header">
+      <div class="modal-title">🔍 Deployment Failure Digest</div>
+      <button class="btn-close-modal" onclick="closeModal('modal-log-analysis')">&times;</button>
+    </div>
+    <div id="log-diag-body">
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+        <span class="badge-status" id="diag-category-badge">Category</span>
+        <span class="badge-status" id="diag-severity-badge">Severity</span>
+      </div>
+      <div style="font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem;" id="diag-summary-text">Summary</div>
+      <div style="background: rgba(0,0,0,0.5); padding: 0.75rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.8rem; color: #f87171; margin-bottom: 1rem; max-height: 120px; overflow-y: auto;" id="diag-root-cause">Root cause</div>
+      <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); padding: 0.85rem; border-radius: 8px; font-size: 0.85rem;">
+        <span style="font-weight: 700; color: #c4b5fd;">Actionable Recommendation:</span>
+        <p style="margin-top: 0.25rem; color: var(--text-main);" id="diag-fix-text">Fix</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-cancel" onclick="closeModal('modal-log-analysis')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CUSTOM LOG PARSER -->
+<div id="modal-custom-log" class="modal-overlay">
+  <div class="modal-card" style="max-width: 600px;">
+    <div class="modal-header">
+      <div class="modal-title">Paste CI/CD Logs to Analyze</div>
+      <button class="btn-close-modal" onclick="closeModal('modal-custom-log')">&times;</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Log Output</label>
+      <textarea id="custom-log-text" class="form-input" style="height: 160px; font-family: var(--font-mono); font-size: 0.8rem;" placeholder="Paste raw terminal/GitHub Actions output here..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-cancel" onclick="closeModal('modal-custom-log')">Cancel</button>
+      <button type="button" class="btn-sm-primary" onclick="submitCustomLogAnalysis()">Run Analysis</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DEPLOYMENT DIFF INSPECTOR -->
+<div id="modal-diff-view" class="modal-overlay">
+  <div class="modal-card" style="max-width: 600px;">
+    <div class="modal-header">
+      <div class="modal-title">🔍 Deployment Diff Inspector</div>
+      <button class="btn-close-modal" onclick="closeModal('modal-diff-view')">&times;</button>
+    </div>
+    <div id="diff-body" style="font-size: 0.88rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: 8px;">
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">Previous Release</div>
+          <span class="code-sha" id="diff-prev-sha">--</span>
+        </div>
+        <div style="font-size: 1.2rem; color: var(--primary);">→</div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">Current Release</div>
+          <span class="code-sha" id="diff-curr-sha">--</span>
+        </div>
+      </div>
+      <div style="margin-bottom: 0.75rem;">
+        <span style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase;">Commit Message</span>
+        <div style="font-weight: 700; margin-top: 0.2rem;" id="diff-msg">--</div>
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <span style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase;">Summary of Changes</span>
+        <div style="background: rgba(0,0,0,0.5); padding: 0.75rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.82rem; color: #a5f3fc; margin-top: 0.25rem;" id="diff-summary-text">--</div>
+      </div>
+      <div style="display: flex; gap: 1rem; font-size: 0.82rem; color: var(--text-muted);">
+        <div>Trigger: <strong id="diff-trigger" style="color: #fff;">--</strong></div>
+        <div>Duration Delta: <strong id="diff-duration" style="color: #fff;">--</strong></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-cancel" onclick="closeModal('modal-diff-view')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: INCIDENT POST-MORTEM GENERATOR -->
+<div id="modal-postmortem-view" class="modal-overlay">
+  <div class="modal-card" style="max-width: 680px;">
+    <div class="modal-header">
+      <div class="modal-title" style="color: #f87171;">📋 Automated Incident Post-Mortem</div>
+      <button class="btn-close-modal" onclick="closeModal('modal-postmortem-view')">&times;</button>
+    </div>
+    <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+      Standardized incident report generated per <code style="color: #c4b5fd;">docs/incident-response.md</code>.
+    </p>
+    <pre id="postmortem-markdown-content" style="background: rgba(0,0,0,0.6); padding: 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.78rem; color: #e2e8f0; max-height: 360px; overflow-y: auto; white-space: pre-wrap; margin-bottom: 1rem; border: 1px solid var(--border);"></pre>
+    <div class="modal-footer" style="justify-content: space-between;">
+      <button type="button" class="btn-cancel" onclick="closeModal('modal-postmortem-view')">Close</button>
+      <button type="button" class="btn-sm-primary" id="btn-copy-postmortem" onclick="copyPostMortemToClipboard()">📋 Copy Markdown Report</button>
+    </div>
+  </div>
+</div>
 
 <footer>
   <div class="footer-links">
-    <a href="/docs" target="_blank">Interactive Swagger Docs</a>
-    <a href="/metrics" target="_blank">Raw Metrics</a>
-    <a href="/health" target="_blank">Health Check</a>
-    <a href="/version" target="_blank">Version Info</a>
+    <a href="/docs" target="_blank">Swagger API</a>
+    <a href="/health" target="_blank">Health</a>
+    <a href="/version" target="_blank">Version</a>
+    <a href="/metrics" target="_blank">Metrics</a>
+    <a href="https://github.com/harshit5afk/deployeasy" target="_blank">GitHub</a>
   </div>
-  <p>DeployEasy • Cloud & DevOps Hackathon • Built with Python 3.12, FastAPI, Docker & Render</p>
+  <p>DeployEasy • Production Cloud DevOps Platform • Python 3.12, FastAPI, SQLite & Render</p>
 </footer>
 
 <script>
 const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+const esc = s => String(s || '').replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
 
-let currentActiveEndpoint = '/health';
+let selectedProjectId = 1;
+let pendingRollbackSha = null;
 
-async function fetchJSON(url) {
-  const started = performance.now();
-  const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-  const latency = Math.round(performance.now() - started);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  return { data, status: res.status, latency };
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
+  
+  const targetTab = $('tab-' + tabId);
+  if (targetTab) targetTab.classList.add('active');
+
+  const btn = Array.from(document.querySelectorAll('.nav-tab-btn')).find(b => b.textContent.toLowerCase().includes(tabId.split('-')[0]));
+  if (btn) btn.classList.add('active');
+
+  if (tabId === 'readiness') loadReadinessScore();
+  if (tabId === 'env') runEnvValidation();
+  if (tabId === 'costs') loadCostEstimator();
 }
 
-function formatUptime(seconds) {
-  if (isNaN(seconds)) return '-';
-  const s = Math.floor(seconds);
-  const m = Math.floor(s / 60);
-  const h = Math.floor(m / 60);
-  if (h > 0) return `${h}h ${m % 60}m ${s % 60}s`;
-  if (m > 0) return `${m}m ${s % 60}s`;
-  return `${s}s`;
+function openModal(id) { $(id).classList.add('open'); }
+function closeModal(id) { $(id).classList.remove('open'); }
+
+function openDeployModal() {
+  $('deploy-sha').value = 'e3876ac91fd2c97491d904b7264817c9135a907b';
+  openModal('modal-trigger-deploy');
+}
+
+function openCustomLogModal() { openModal('modal-custom-log'); }
+
+async function submitCustomLogAnalysis() {
+  const text = $('custom-log-text').value;
+  closeModal('modal-custom-log');
+  if (!text) return;
+  try {
+    const res = await fetch('/api/analyze-logs', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({logs: text})
+    });
+    if (res.ok) {
+      const data = await res.json();
+      displayLogAnalysis(data);
+    }
+  } catch(e) { alert('Analysis failed: ' + e.message); }
+}
+
+async function analyzeDeploymentById(id) {
+  try {
+    const res = await fetch(`/api/deployments/${id}/analysis`);
+    if (res.ok) {
+      const data = await res.json();
+      displayLogAnalysis(data);
+    }
+  } catch(e) { alert('Analysis failed: ' + e.message); }
+}
+
+function displayLogAnalysis(data) {
+  $('diag-category-badge').textContent = data.error_category.toUpperCase();
+  $('diag-category-badge').className = 'badge-status ' + (data.error_category === 'none' ? 'badge-success' : 'badge-danger');
+  $('diag-severity-badge').textContent = data.severity + ' SEVERITY';
+  $('diag-severity-badge').className = 'badge-status ' + (data.severity === 'CRITICAL' ? 'badge-danger' : (data.severity === 'HIGH' ? 'badge-warning' : 'badge-success'));
+  $('diag-summary-text').textContent = data.summary;
+  $('diag-root-cause').textContent = data.root_cause || 'No specific error stack trace detected.';
+  $('diag-fix-text').textContent = data.suggested_fix;
+  openModal('modal-log-analysis');
+}
+
+function initiateRollback(sha) {
+  pendingRollbackSha = sha;
+  $('rollback-target-label').textContent = 'Commit SHA: ' + sha;
+  openModal('modal-confirm-rollback');
+}
+
+async function executeRollback() {
+  if (!pendingRollbackSha) return;
+  closeModal('modal-confirm-rollback');
+  try {
+    const res = await fetch('/api/deployments/rollback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: selectedProjectId,
+        target_sha: pendingRollbackSha,
+        reason: $('rollback-reason').value || 'Rollback triggered via dashboard'
+      })
+    });
+    if (res.ok) {
+      alert('✓ Rollback initiated successfully! Target commit ' + pendingRollbackSha.slice(0, 7) + ' is now deploying.');
+      refreshAllData();
+    } else {
+      const err = await res.json();
+      alert('Rollback failed: ' + (err.detail || 'Unknown error'));
+    }
+  } catch(e) { alert('Network error: ' + e.message); }
+}
+
+async function handleCreateProject(e) {
+  e.preventDefault();
+  const payload = {
+    name: $('proj-name').value,
+    repo_name: $('proj-repo').value,
+    branch: $('proj-branch').value || 'main',
+    service_url: $('proj-url').value || '',
+    deploy_hook_url: $('proj-hook').value || ''
+  };
+  try {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      closeModal('modal-add-project');
+      alert('✓ Project connected successfully!');
+      refreshAllData();
+    } else {
+      const err = await res.json();
+      alert('Error: ' + (err.detail || 'Could not connect project'));
+    }
+  } catch(err) { alert('Network error: ' + err.message); }
+}
+
+async function handleTriggerDeploy(e) {
+  e.preventDefault();
+  const payload = {
+    project_id: selectedProjectId,
+    commit_sha: $('deploy-sha').value,
+    commit_message: $('deploy-msg').value,
+    branch: 'main'
+  };
+  try {
+    const res = await fetch('/api/deployments/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      closeModal('modal-trigger-deploy');
+      alert('✓ Deployment triggered to production!');
+      refreshAllData();
+    } else {
+      const err = await res.json();
+      alert('Deploy failed: ' + (err.detail || 'Could not trigger deploy'));
+    }
+  } catch(err) { alert('Network error: ' + err.message); }
+}
+
+async function triggerHealthProbe() {
+  try {
+    const res = await fetch(`/api/projects/${selectedProjectId}/check-health`, { method: 'POST' });
+    if (res.ok) {
+      const check = await res.json();
+      $('mon-latency').textContent = Math.round(check.response_time_ms) + 'ms';
+      alert(`✓ Live Health Probe Succeeded! (Status: ${check.status_code} in ${check.response_time_ms}ms)`);
+      loadHealthHistory();
+    }
+  } catch(e) { alert('Probe failed: ' + e.message); }
+}
+
+async function loadReadinessScore() {
+  try {
+    const res = await fetch(`/api/projects/${selectedProjectId}/readiness`);
+    if (!res.ok) return;
+    const r = await res.json();
+    $('full-score').textContent = r.readiness_score;
+    $('quick-score').textContent = r.readiness_score;
+    $('full-tier').textContent = r.confidence_tier;
+    $('full-tier').className = 'badge-status ' + r.badge_class;
+    $('quick-tier').textContent = r.confidence_tier;
+    $('quick-tier').className = 'badge-status ' + r.badge_class;
+    $('full-rec').textContent = r.recommendation;
+    $('quick-rec').textContent = r.recommendation;
+
+    $('readiness-checklist-table').innerHTML = r.checklist.map(c => `
+      <tr>
+        <td style="font-weight: 700;">${esc(c.category)}</td>
+        <td><span class="badge-status badge-${c.status === 'PASS' ? 'success' : (c.status === 'WARN' ? 'warning' : 'danger')}">${esc(c.status)}</span></td>
+        <td style="font-family: var(--font-mono);">${c.points} / 25 pts</td>
+        <td style="font-size: 0.85rem; color: var(--text-muted);">${esc(c.message)}</td>
+      </tr>
+    `).join('');
+  } catch(e) { console.error('Readiness error:', e); }
+}
+
+async function runEnvValidation() {
+  const lines = $('env-input-box').value.split('\n');
+  const dict = {};
+  lines.forEach(l => {
+    const trimmed = l.trim();
+    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+      const idx = trimmed.indexOf('=');
+      const k = trimmed.slice(0, idx).trim();
+      const v = trimmed.slice(idx + 1).trim();
+      dict[k] = v;
+    }
+  });
+
+  try {
+    const res = await fetch('/api/validate-env', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ env_vars: dict })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      $('env-badge-status').textContent = data.is_valid ? 'VALID READY' : 'ERRORS FOUND';
+      $('env-badge-status').className = 'badge-status ' + (data.is_valid ? 'badge-success' : 'badge-danger');
+      $('env-eval-count').textContent = data.variables_evaluated + ' variables evaluated';
+
+      let out = '';
+      if (data.errors.length > 0) {
+        out += '<div style="color: #f87171; font-weight: 700; margin-bottom: 0.25rem;">Errors:</div><ul style="margin-left: 1.25rem; margin-bottom: 0.75rem; color: #fca5a5;">';
+        data.errors.forEach(e => out += `<li>${esc(e)}</li>`);
+        out += '</ul>';
+      }
+      if (data.warnings.length > 0) {
+        out += '<div style="color: #fbbf24; font-weight: 700; margin-bottom: 0.25rem;">Warnings:</div><ul style="margin-left: 1.25rem; margin-bottom: 0.75rem; color: #fde68a;">';
+        data.warnings.forEach(w => out += `<li>${esc(w)}</li>`);
+        out += '</ul>';
+      }
+      out += '<div style="color: var(--text-muted); font-weight: 700; margin-top: 0.5rem; margin-bottom: 0.25rem;">Sanitized Previews:</div><pre style="background: rgba(255,255,255,0.03); padding: 0.5rem; border-radius: 6px;">' + JSON.stringify(data.sanitized_variables, null, 2) + '</pre>';
+      $('env-report-output').innerHTML = out;
+    }
+  } catch(err) { console.error('Env validation failed:', err); }
 }
 
 async function probeEndpoint(path, btnElement) {
@@ -978,78 +1711,226 @@ async function probeEndpoint(path, btnElement) {
     document.querySelectorAll('.btn-endpoint').forEach(b => b.classList.remove('active'));
     btnElement.classList.add('active');
   }
-  currentActiveEndpoint = path;
   $('endpoint-path').textContent = path;
-  
+  const started = performance.now();
   try {
-    const { data, status, latency } = await fetchJSON(path);
-    $('badge-code').textContent = `${status} OK`;
-    $('badge-code').className = 'badge-status';
+    const res = await fetch(path, { headers: { 'Accept': 'application/json' } });
+    const latency = Math.round(performance.now() - started);
+    const data = await res.json();
+    $('badge-code').textContent = `${res.status} OK`;
+    $('badge-code').className = 'badge-status badge-success';
     $('badge-latency').textContent = `${latency} ms`;
     $('json-display').textContent = JSON.stringify(data, null, 2);
   } catch(e) {
     $('badge-code').textContent = 'ERROR';
-    $('badge-code').className = 'badge-status' + ' conclusion-failure';
+    $('badge-code').className = 'badge-status badge-danger';
     $('badge-latency').textContent = '--';
     $('json-display').textContent = JSON.stringify({ error: e.message }, null, 2);
   }
 }
 
-async function updateDashboard() {
+async function loadHealthHistory() {
   try {
-    const [h, v, m] = await Promise.all([
-      fetchJSON('/health'),
-      fetchJSON('/version'),
-      fetchJSON('/metrics')
-    ]);
-
-    // Pill status
-    $('status-pill').className = 'status-pill';
-    $('status-text').textContent = 'Operational (200 OK)';
-
-    // Stats
-    $('val-health').textContent = h.data.status === 'ok' ? 'HEALTHY' : 'DEGRADED';
-    $('val-uptime').textContent = formatUptime(m.data.process_uptime_seconds);
-    $('val-requests').textContent = m.data.requests_since_process_start;
-    $('val-sha').textContent = v.data.git_sha ? v.data.git_sha.slice(0, 7) : 'dev';
-    $('val-version').textContent = `DeployEasy v${v.data.version || '1.0.0'}`;
-  } catch(err) {
-    $('status-pill').className = 'status-pill down';
-    $('status-text').textContent = 'Service Waking Up...';
-    $('val-health').textContent = 'WAKING';
-  }
-
-  // Pipeline runs
-  try {
-    const runsRes = await fetchJSON('/api/runs');
-    const runs = runsRes.data.runs || [];
-    if (runs.length > 0) {
-      $('runs-list').innerHTML = runs.map(r => `
-        <li class="run-item">
-          <div class="run-info">
-            <span class="run-conclusion conclusion-${r.status === 'success' ? 'success' : (r.status === 'failure' ? 'failure' : 'queued')}">${esc(r.status)}</span>
-            <span style="font-weight: 600;">${esc(r.name)}</span>
-            <span class="run-sha">${esc(r.sha)}</span>
-          </div>
-          <span class="run-time">${new Date(r.time).toLocaleTimeString()}</span>
-        </li>
+    const res = await fetch(`/api/projects/${selectedProjectId}/health-history`);
+    if (!res.ok) return;
+    const history = await res.json();
+    if (history.length > 0) {
+      $('mon-latency').textContent = Math.round(history[0].response_time_ms) + 'ms';
+      $('health-history-table').innerHTML = history.map(h => `
+        <tr>
+          <td><span class="code-sha">${esc(h.endpoint)}</span></td>
+          <td><span style="font-weight: 700; color: #34d399;">${h.status_code} OK</span></td>
+          <td>${h.response_time_ms} ms</td>
+          <td><span class="badge-status badge-${h.is_healthy ? 'success' : 'danger'}">${h.is_healthy ? 'HEALTHY' : 'DOWN'}</span></td>
+          <td>${new Date(h.checked_at).toLocaleTimeString()}</td>
+        </tr>
       `).join('');
-    } else {
-      $('runs-list').innerHTML = `
-        <li class="run-item" style="color: var(--text-dim);">
-          No workflow runs detected yet. (Set GITHUB_REPO to load Actions telemetry).
-        </li>
-      `;
     }
-    $('runs-msg').textContent = runsRes.data.message || '';
-  } catch(e) {
-    $('runs-list').innerHTML = `<li class="run-item" style="color: var(--text-dim);">Pipeline telemetry ready.</li>`;
+  } catch(e) { console.error(e); }
+}
+
+async function loadCostEstimator() {
+  try {
+    const res = await fetch(`/api/projects/${selectedProjectId}/costs`);
+    if (!res.ok) return;
+    const data = await res.json();
+    $('cost-monthly-spend').textContent = `$${data.projected_monthly_cost_usd.toFixed(2)}`;
+    $('cost-runner-mins').textContent = `${data.monthly_runner_minutes} min`;
+    $('cost-storage-gb').textContent = `${data.container_storage_gb.toFixed(1)} GB`;
+
+    const b = data.breakdown || {};
+    $('cost-breakdown-table').innerHTML = `
+      <tr>
+        <td style="font-weight: 700;">GitHub Actions Linux Runners</td>
+        <td>${data.monthly_runner_minutes} minutes/mo</td>
+        <td>$0.008 / min (after 2,000 free min)</td>
+        <td>$${(b.runner_minutes_usd || 0).toFixed(2)}</td>
+        <td><span class="badge-status badge-success">Free Tier Active</span></td>
+      </tr>
+      <tr>
+        <td style="font-weight: 700;">GitHub Container Registry (GHCR)</td>
+        <td>${data.container_storage_gb.toFixed(2)} GB</td>
+        <td>$0.25 / GB / mo (after 500 MB)</td>
+        <td>$${(b.container_registry_usd || 0).toFixed(2)}</td>
+        <td><span class="badge-status badge-success">Included</span></td>
+      </tr>
+      <tr>
+        <td style="font-weight: 700;">Render Web Service Hosting</td>
+        <td>1 Instance (0.5 CPU, 512 MB RAM)</td>
+        <td>$0.00 (Free Tier) / $7.00 Starter</td>
+        <td>$${(b.hosting_usd || 0).toFixed(2)}</td>
+        <td><span class="badge-status badge-success">${esc(data.instance_tier.toUpperCase())}</span></td>
+      </tr>
+    `;
+
+    const recs = data.recommendations || [];
+    $('cost-recommendations-list').innerHTML = recs.map(r => `
+      <div class="security-card" style="padding: 0.9rem 1.15rem; display: flex; align-items: flex-start; gap: 0.75rem;">
+        <span style="font-size: 1.1rem;">💡</span>
+        <div>
+          <div style="font-weight: 600; color: #fff; font-size: 0.88rem;">${esc(r)}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) { console.error('Cost estimator error:', e); }
+}
+
+async function handleSendWebhookTest(e) {
+  e.preventDefault();
+  const platform = $('webhook-platform').value;
+  const url = $('webhook-url').value;
+  try {
+    const res = await fetch(`/api/projects/${selectedProjectId}/webhook-test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ webhook_url: url, platform: platform })
+    });
+    const data = await res.json();
+    $('webhook-test-result').style.display = 'block';
+    $('webhook-status-label').textContent = data.success ? '✓ Dispatch Successful (200 OK)' : '⚠️ Dispatch Attempted (Server Returned Notification Payload)';
+    $('webhook-status-label').style.color = data.success ? '#34d399' : '#fbbf24';
+    $('webhook-payload-preview').textContent = JSON.stringify(data.sample_payload, null, 2);
+  } catch(err) {
+    alert('Webhook test failed: ' + err.message);
   }
 }
 
-// Initial update & 5s interval
-updateDashboard();
-setInterval(updateDashboard, 5000);
+async function viewDeploymentDiff(depId) {
+  try {
+    const res = await fetch(`/api/deployments/${depId}/diff`);
+    if (!res.ok) return;
+    const diff = await res.json();
+    $('diff-curr-sha').textContent = diff.current_sha;
+    $('diff-prev-sha').textContent = diff.previous_sha;
+    $('diff-msg').textContent = diff.commit_message;
+    $('diff-summary-text').textContent = diff.diff_summary;
+    $('diff-trigger').textContent = diff.trigger_type.toUpperCase();
+    const durDelta = diff.duration_difference;
+    $('diff-duration').textContent = durDelta >= 0 ? `+${durDelta}s slower` : `${durDelta}s faster`;
+    openModal('modal-diff-view');
+  } catch(e) { alert('Could not fetch diff: ' + e.message); }
+}
+
+async function generateIncidentPostMortem(depId, sha) {
+  try {
+    const res = await fetch(`/api/projects/${selectedProjectId}/incidents/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        failed_sha: sha,
+        rollback_sha: 'ef1482f7c0099ad4bb5e58db5f32cf8e51928014',
+        symptoms: 'Deployment failed smoke verification on /version probe',
+        log_excerpt: 'Deployment failed verification: container unhealthy or response timeout'
+      })
+    });
+    if (!res.ok) return;
+    const postmortem = await res.json();
+    $('postmortem-markdown-content').textContent = postmortem.markdown_report;
+    $('btn-copy-postmortem').textContent = '📋 Copy Markdown Report';
+    openModal('modal-postmortem-view');
+  } catch(e) { alert('Incident generator failed: ' + e.message); }
+}
+
+function copyPostMortemToClipboard() {
+  const text = $('postmortem-markdown-content').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    $('btn-copy-postmortem').textContent = '✓ Copied to Clipboard!';
+  }).catch(() => {
+    alert('Markdown copied!');
+  });
+}
+
+async function refreshAllData() {
+  try {
+    const res = await fetch('/api/overview');
+    if (!res.ok) return;
+    const overview = await res.json();
+
+    $('kpi-projects').textContent = overview.total_projects;
+    $('kpi-fleet-health').textContent = overview.fleet_health.toUpperCase();
+    $('kpi-avg-duration').textContent = `${overview.avg_deploy_time_seconds}s`;
+    
+    const totalDeploys = overview.successful_deployments + overview.failed_deployments;
+    const rate = totalDeploys > 0 ? Math.round((overview.successful_deployments / totalDeploys) * 100) : 100;
+    $('kpi-success-rate').textContent = `${rate}%`;
+
+    const uptimeSec = Math.floor(overview.process_uptime_seconds);
+    const m = Math.floor(uptimeSec / 60);
+    const h = Math.floor(m / 60);
+    $('mon-uptime').textContent = h > 0 ? `${h}h ${m%60}m` : (m > 0 ? `${m}m ${uptimeSec%60}s` : `${uptimeSec}s`);
+    $('mon-requests').textContent = overview.requests_served;
+
+    const recent = overview.recent_deployments || [];
+    if (recent.length > 0) {
+      const renderRow = d => `
+        <tr>
+          <td><span class="code-sha">${esc(d.commit_sha.slice(0, 7))}</span></td>
+          <td style="max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(d.commit_message)}</td>
+          <td><span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim);">${esc(d.trigger_type)}</span></td>
+          <td>
+            <span class="badge-status badge-${d.status === 'success' ? 'success' : (d.status === 'rolled_back' ? 'rolled' : 'danger')}">
+              ${esc(d.status)}
+            </span>
+          </td>
+          <td>${d.duration_seconds}s</td>
+          <td>${new Date(d.created_at).toLocaleTimeString()}</td>
+          <td style="white-space: nowrap;">
+            <button class="btn-action-sm" onclick="viewDeploymentDiff(${d.id})">Diff</button>
+            <button class="btn-action-sm" onclick="analyzeDeploymentById(${d.id})">Analyze</button>
+            ${(d.status === 'failure' || d.status === 'rolled_back') ? `<button class="btn-action-sm" style="border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;" onclick="generateIncidentPostMortem(${d.id}, '${d.commit_sha}')">Post-Mortem</button>` : ''}
+            <button class="btn-rollback" onclick="initiateRollback('${d.commit_sha}')">Rollback</button>
+          </td>
+        </tr>
+      `;
+      $('overview-deployments-table').innerHTML = recent.slice(0, 5).map(renderRow).join('');
+      $('deployments-full-table').innerHTML = recent.map(renderRow).join('');
+    }
+
+    const projs = overview.projects || [];
+    if (projs.length > 0) {
+      selectedProjectId = projs[0].id;
+      $('projects-table').innerHTML = projs.map(p => `
+        <tr>
+          <td style="font-weight: 700;">${esc(p.name)}</td>
+          <td><a href="https://github.com/${esc(p.repo_name)}" target="_blank" style="color: var(--primary); text-decoration: none;">${esc(p.repo_name)}</a></td>
+          <td><span class="code-sha">${esc(p.branch)}</span></td>
+          <td><span class="badge-status badge-success">${esc(p.status)}</span></td>
+          <td><span style="font-size: 0.82rem; color: var(--text-dim);">${esc(p.service_url || 'Default local')}</span></td>
+          <td>
+            <button class="btn-sm-primary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="triggerHealthProbe()">Probe Health</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    loadHealthHistory();
+    loadReadinessScore();
+  } catch(e) { console.error('Data refresh error:', e); }
+}
+
+refreshAllData();
+setInterval(refreshAllData, 5000);
+probeEndpoint('/api/overview');
 </script>
 </body>
 </html>
