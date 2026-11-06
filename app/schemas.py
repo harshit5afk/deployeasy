@@ -28,6 +28,7 @@ class UserResponse(BaseModel):
 class AuthTokenResponse(BaseModel):
     status: str = "authenticated"
     token: str
+    csrf_token: str = ""
     user: UserResponse
 
 
@@ -80,6 +81,7 @@ class DeploymentTriggerRequest(BaseModel):
     commit_sha: str = Field(..., min_length=7, max_length=40)
     commit_message: str = Field("Manual deploy triggered via dashboard", max_length=255)
     branch: str = "main"
+    force: bool = False
 
 
 class RollbackRequest(BaseModel):

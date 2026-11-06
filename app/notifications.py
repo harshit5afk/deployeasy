@@ -1,10 +1,15 @@
 """Webhook Notifications Engine for DeployEasy deployments.
 
 Dispatches formatted deployment and incident alert payloads to Discord,
-Slack, or custom webhook endpoints.
+Slack, or custom webhook endpoints with SSRF protection.
 """
-import urllib.request
+import json
+import logging
 from typing import Any
+
+from .ssrf import SSRFValidationError, safe_urlopen, validate_webhook_url
+
+log = logging.getLogger("deployeasy")
 
 
 def format_discord_payload(
@@ -64,19 +69,35 @@ def format_slack_payload(
     }
 
 
-def dispatch_webhook(webhook_url: str, payload: dict[str, Any], timeout: int = 4) -> bool:
-    """Send webhook payload to a configured endpoint."""
-    if not webhook_url or not webhook_url.startswith(("http://", "https://")):
+def dispatch_webhook(
+    webhook_url: str,
+    payload: dict[str, Any],
+    platform: str = "discord",
+    timeout: float = 4.0,
+    allow_local_for_testing: bool = False,
+) -> bool:
+    """Send webhook payload with SSRF protection and platform allowlist verification."""
+    if not webhook_url or not webhook_url.startswith("https://"):
         return False
+
     try:
-        import json
+        if not allow_local_for_testing:
+            validate_webhook_url(webhook_url, platform)
+    except SSRFValidationError as exc:
+        log.warning("SSRF blocked webhook dispatch to %s: %s", webhook_url, exc)
+        return False
+
+    try:
         data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
+        headers = {"Content-Type": "application/json", "User-Agent": "DeployEasy-Webhook/1.0"}
+        with safe_urlopen(
             webhook_url,
             data=data,
-            headers={"Content-Type": "application/json", "User-Agent": "DeployEasy-Webhook/1.0"},
-        )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            headers=headers,
+            timeout=timeout,
+            allow_local_for_testing=allow_local_for_testing,
+        ) as resp:
             return 200 <= resp.status < 300
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Webhook dispatch error: %s", exc)
         return False

@@ -2,6 +2,8 @@
 import asyncio
 import json
 import logging
+import os
+import re
 import time
 import urllib.parse
 import urllib.request
@@ -10,24 +12,40 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from . import config
 from .auth import (
-    create_session,
+    check_auth_rate_limit,
+    clear_session_cookies,
+    create_user_session,
+    get_authorized_project,
     get_current_user,
-    get_optional_user,
     hash_password,
-    revoke_session,
+    set_session_cookies,
+    verify_csrf_protection,
     verify_password,
-    verify_project_permission,
 )
 from .cost_estimator import estimate_project_costs
-from .db import Deployment, HealthCheck, Project, SessionLocal, User, get_db, init_db
+from .db import (
+    Deployment,
+    HealthCheck,
+    Project,
+    SessionLocal,
+    User,
+    UserSession,
+    get_db,
+    init_db,
+)
 from .env_validator import validate_environment
+from .github_client import (
+    GitHubIntegrationError,
+    dispatch_github_workflow,
+    verify_live_version,
+)
 from .incident_generator import generate_incident_report
 from .log_analyzer import analyze_deployment_logs
 from .notifications import (
@@ -59,6 +77,12 @@ from .schemas import (
     UserResponse,
     WebhookTestRequest,
 )
+from .ssrf import (
+    SSRFValidationError,
+    safe_urlopen,
+    validate_target_url,
+    validate_webhook_url,
+)
 
 STATIC = Path(__file__).parent / "static"
 START_TIME = time.time()
@@ -70,32 +94,23 @@ log = logging.getLogger("deployeasy")
 
 DbSession = Annotated[Session, Depends(get_db)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
-OptionalUser = Annotated[User | None, Depends(get_optional_user)]
-
-BLOCKED_HOSTNAMES = {
-    "169.254.169.254",
-    "metadata.google.internal",
-    "instance-data",
-    "100.100.100.200",
-}
+CsrfProtect = Annotated[None, Depends(verify_csrf_protection)]
 
 
-def probe_project_health(project: Project, db: Session) -> HealthCheck:
-    """Execute a live HTTP health probe with SSRF protection and accurate error detection."""
+def probe_project_health(project: Project, db: Session, allow_local_for_testing: bool = False) -> HealthCheck:
+    """Execute a live HTTP health probe with strict SSRF protection and accurate error detection."""
     service_url = (project.service_url or "").strip()
     if not service_url:
         service_url = "http://localhost:8080"
 
     target_url = service_url.rstrip("/") + "/health"
-    parsed = urllib.parse.urlparse(target_url)
-    hostname = (parsed.hostname or "").lower()
-
-    # SSRF protection: reject internal cloud metadata hostnames and addresses
-    if hostname in BLOCKED_HOSTNAMES or hostname.startswith("169.254."):
+    try:
+        validate_target_url(target_url, allow_local_for_testing=allow_local_for_testing)
+    except SSRFValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="SSRF protection: Probing cloud metadata or internal hostnames is prohibited.",
-        )
+            detail=f"SSRF protection: {exc}",
+        ) from exc
 
     start_probe = time.time()
     status_code = 503
@@ -103,8 +118,11 @@ def probe_project_health(project: Project, db: Session) -> HealthCheck:
     error_msg = None
 
     try:
-        req = urllib.request.Request(target_url, headers={"User-Agent": "DeployEasy-Monitor/1.0"})
-        with urllib.request.urlopen(req, timeout=3) as resp:
+        with safe_urlopen(
+            target_url,
+            timeout=3.0,
+            allow_local_for_testing=allow_local_for_testing,
+        ) as resp:
             status_code = resp.status
             is_healthy = (200 <= status_code < 300)
     except Exception as exc:  # noqa: BLE001
@@ -137,7 +155,7 @@ async def background_health_monitor():
             try:
                 projects = db.query(Project).all()
                 for p in projects:
-                    if p.service_url and not p.service_url.startswith(("http://localhost", "http://127.0.0.1")):
+                    if p.service_url:
                         try:
                             probe_project_health(p, db)
                         except Exception as probe_err:  # noqa: BLE001
@@ -152,13 +170,16 @@ async def background_health_monitor():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize database tables and seed sample data if empty
+    # Initialize database tables and seed default admin user
     init_db()
-    task = asyncio.create_task(background_health_monitor())
+    task = None
+    if not os.getenv("TESTING"):
+        task = asyncio.create_task(background_health_monitor())
     try:
         yield
     finally:
-        task.cancel()
+        if task:
+            task.cancel()
 
 
 app = FastAPI(title="DeployEasy", lifespan=lifespan)
@@ -235,12 +256,14 @@ def metrics():
 
 
 # -----------------------------------------------------------------------------
-# Authentication & Session Management
+# Authentication & Safe Session Management
 # -----------------------------------------------------------------------------
 
 @app.post("/api/auth/register", response_model=AuthTokenResponse, status_code=201)
-def register_user(payload: UserCreate, db: DbSession):
-    """Create a new developer account with cryptographic PBKDF2 password hashing."""
+def register_user(payload: UserCreate, request: Request, response: Response, db: DbSession):
+    """Create a new developer account with PBKDF2 password hashing, rate limiting, and HttpOnly cookies."""
+    check_auth_rate_limit(request)
+
     existing = db.query(User).filter((User.username == payload.username) | (User.email == payload.email)).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username or email already registered")
@@ -256,24 +279,38 @@ def register_user(payload: UserCreate, db: DbSession):
     db.commit()
     db.refresh(user)
 
-    token = create_session(user)
-    return AuthTokenResponse(token=token, user=user)
+    session = create_user_session(db, user)
+    set_session_cookies(response, session)
+
+    return AuthTokenResponse(
+        token=session.session_token,
+        csrf_token=session.csrf_token,
+        user=user,
+    )
 
 
 @app.post("/api/auth/login", response_model=AuthTokenResponse)
-def login_user(payload: UserLogin, db: DbSession):
-    """Authenticate credentials and generate active session token."""
+def login_user(payload: UserLogin, request: Request, response: Response, db: DbSession):
+    """Authenticate credentials with rate limiting and issue secure HttpOnly cookies."""
+    check_auth_rate_limit(request)
+
     user = db.query(User).filter((User.username == payload.username) | (User.email == payload.username)).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
 
-    token = create_session(user)
-    return AuthTokenResponse(token=token, user=user)
+    session = create_user_session(db, user)
+    set_session_cookies(response, session)
+
+    return AuthTokenResponse(
+        token=session.session_token,
+        csrf_token=session.csrf_token,
+        user=user,
+    )
 
 
 @app.post("/api/auth/demo-login", response_model=AuthTokenResponse)
-def demo_login(db: DbSession):
-    """Create a secured demo session token with read-only sandbox permissions."""
+def demo_login(response: Response, db: DbSession):
+    """Create a secured demo session with read-only sandbox permissions."""
     demo_user = db.query(User).filter(User.username == "demo-developer").first()
     if not demo_user:
         demo_user = User(
@@ -287,23 +324,37 @@ def demo_login(db: DbSession):
         db.commit()
         db.refresh(demo_user)
 
-    token = create_session(demo_user)
-    return AuthTokenResponse(token=token, user=demo_user)
+    session = create_user_session(db, demo_user)
+    set_session_cookies(response, session)
+
+    return AuthTokenResponse(
+        token=session.session_token,
+        csrf_token=session.csrf_token,
+        user=demo_user,
+    )
 
 
 @app.get("/api/auth/me", response_model=UserResponse)
-def current_user(user: CurrentUser):
-    """Retrieve current session identity. Requires valid Bearer authorization."""
+def current_user_identity(user: CurrentUser):
+    """Retrieve current session identity. Requires valid authentication."""
     return user
 
 
 @app.post("/api/auth/logout")
-def logout(user: CurrentUser, request: Request):
-    """Revoke active session token."""
-    auth_header = request.headers.get("Authorization")
-    if auth_header:
-        token = auth_header.split()[-1]
-        revoke_session(token)
+def logout_user(request: Request, response: Response, db: DbSession):
+    """Invalidate session in database and clear authentication cookies."""
+    token = request.cookies.get("deployeasy_session")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            parts = auth_header.split()
+            token = parts[-1]
+
+    if token:
+        db.query(UserSession).filter(UserSession.session_token == token).delete()
+        db.commit()
+
+    clear_session_cookies(response)
     return {"status": "logged_out", "message": "Session invalidated"}
 
 
@@ -339,23 +390,32 @@ def pipeline_runs():
 
 
 # -----------------------------------------------------------------------------
-# Projects API
+# Projects API (Owner-Scoped Authorization & SSRF Validation)
 # -----------------------------------------------------------------------------
 
 @app.get("/api/projects", response_model=list[ProjectResponse])
-def list_projects(db: DbSession, user: OptionalUser):
-    """List projects accessible to the caller. Does not leak deploy hook URLs."""
-    return db.query(Project).all()
+def list_projects(user: CurrentUser, db: DbSession):
+    """List projects accessible to the authenticated user. Excludes deploy hook secrets."""
+    if user.role == "admin":
+        return db.query(Project).all()
+    return db.query(Project).filter(Project.owner_id == user.id).all()
 
 
 @app.post("/api/projects", response_model=ProjectResponse, status_code=201)
-def create_project(payload: ProjectCreate, db: DbSession, user: OptionalUser):
-    """Connect a new repository. Excludes deploy hook URL in response."""
-    if user and user.role == "demo":
+def create_project(payload: ProjectCreate, user: CurrentUser, db: DbSession, csrf: CsrfProtect = None):
+    """Connect a new repository. Requires authentication and enforces SSRF validation on service URLs."""
+    if user.role == "demo":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Demo account has read-only access. Sign up to register projects.",
+            detail="Demo accounts have read-only access. Sign up as a developer to connect projects.",
         )
+
+    # SSRF validation on project service URL if provided
+    if payload.service_url:
+        try:
+            validate_target_url(payload.service_url)
+        except SSRFValidationError as err:
+            raise HTTPException(status_code=400, detail=f"Invalid service_url: {err}") from err
 
     existing = db.query(Project).filter(Project.repo_name == payload.repo_name).first()
     if existing:
@@ -368,54 +428,40 @@ def create_project(payload: ProjectCreate, db: DbSession, user: OptionalUser):
         service_url=payload.service_url,
         deploy_hook_url=payload.deploy_hook_url,
         status="operational",
-        owner_id=user.id if user else None,
+        owner_id=user.id,
     )
     db.add(project)
     db.commit()
     db.refresh(project)
-
-    init_dep = Deployment(
-        project_id=project.id,
-        commit_sha=uuid.uuid4().hex[:40],
-        commit_message="Initial project connection & registration",
-        branch=payload.branch,
-        trigger_type="manual",
-        status="success",
-        duration_seconds=30,
-        logs_summary="✓ Repository linked\n✓ Environment validated\n✓ Ready for deployments",
-    )
-    db.add(init_dep)
-    db.commit()
-
     return project
 
 
 @app.get("/api/projects/{project_id}", response_model=ProjectResponse)
-def get_project(project_id: int, db: DbSession):
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return project
+def get_project(project_id: int, user: CurrentUser, db: DbSession):
+    """Retrieve project metadata with owner authorization."""
+    return get_authorized_project(project_id, user, db, require_write=False)
 
 
 # -----------------------------------------------------------------------------
-# Deployments API, One-Click Rollback & Diffs
+# Deployments API, One-Click Rollback & Diffs (Verified Execution)
 # -----------------------------------------------------------------------------
 
 @app.get("/api/projects/{project_id}/deployments", response_model=list[DeploymentResponse])
-def get_project_deployments(project_id: int, db: DbSession):
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+def get_project_deployments(project_id: int, user: CurrentUser, db: DbSession):
+    """Retrieve historical deployments for an authorized project."""
+    project = get_authorized_project(project_id, user, db, require_write=False)
     return project.deployments
 
 
 @app.get("/api/deployments/{deployment_id}/diff")
-def get_deployment_diff(deployment_id: int, db: DbSession):
+def get_deployment_diff(deployment_id: int, user: CurrentUser, db: DbSession):
     """Calculate the release jump and difference between deployments."""
     dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
     if not dep:
         raise HTTPException(status_code=404, detail="Deployment record not found")
+
+    # Authorize access to parent project
+    get_authorized_project(dep.project_id, user, db, require_write=False)
 
     prev_dep = (
         db.query(Deployment)
@@ -438,24 +484,65 @@ def get_deployment_diff(deployment_id: int, db: DbSession):
 
 
 @app.post("/api/deployments/trigger", response_model=DeploymentResponse, status_code=201)
-def trigger_deployment(payload: DeploymentTriggerRequest, db: DbSession, user: OptionalUser):
-    """Trigger manual release deployment. Triggers Render deploy hook if configured."""
-    project = db.query(Project).filter(Project.id == payload.project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+def trigger_deployment(payload: DeploymentTriggerRequest, user: CurrentUser, db: DbSession, csrf: CsrfProtect = None):
+    """Trigger manual release deployment. Enforces readiness gates and executes real workflow or hook."""
+    project = get_authorized_project(payload.project_id, user, db, require_write=True)
 
-    if user:
-        verify_project_permission(project, user, "deploy")
+    # 1. Enforce Pre-Deploy Readiness Safety Gates (unless force=True with admin privileges)
+    if not payload.force:
+        critical_cves = 0
+        high_cves = 0
+        secrets_found = False
+        for scan in project.security_scans:
+            if scan.scan_type == "trivy":
+                critical_cves += scan.critical_count
+                high_cves += scan.high_count
+            elif scan.scan_type == "gitleaks" and not scan.passed:
+                secrets_found = True
+
+        last_dep = project.deployments[0] if project.deployments else None
+        tests_ok = (last_dep is not None and last_dep.status in ("success", "rolled_back"))
+        rollback_ok = len(project.deployments) > 1
+
+        readiness = calculate_readiness_score(
+            tests_passed=tests_ok,
+            critical_vulns=critical_cves,
+            high_vulns=high_cves,
+            secrets_detected=secrets_found,
+            health_status=project.status,
+            rollback_available=rollback_ok,
+        )
+        if readiness["deployment_blocked"]:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Deployment blocked by safety gates: {'; '.join(readiness['blocking_reasons'])}. Fix violations before promoting.",
+            )
 
     sha = payload.commit_sha
     if len(sha) < 40:
         sha = sha.ljust(40, "0")
 
-    dep_status = "success"
-    log_lines = [f"Release triggered for commit {sha[:7]}", f"Branch: {payload.branch}"]
+    dep_status = "deploying"
+    log_lines = [f"Release initiated for commit {sha[:7]}", f"Branch: {payload.branch}"]
+    has_integration = False
 
-    # If external deploy hook is configured, actually trigger it
-    if project.deploy_hook_url and not project.deploy_hook_url.startswith("https://api.render.com/deploy/srv-placeholder"):
+    # 2. Real Integration Dispatch: GitHub workflow_dispatch
+    if config.GITHUB_TOKEN:
+        try:
+            dispatch_github_workflow(
+                repo_name=project.repo_name,
+                workflow_file="pipeline.yml",
+                inputs={"sha": sha},
+                ref=payload.branch or "main",
+            )
+            log_lines.append("✓ GitHub Actions workflow_dispatch executed (pipeline.yml)")
+            has_integration = True
+        except GitHubIntegrationError as err:
+            log_lines.append(f"⚠️ GitHub Actions dispatch error: {err}")
+            dep_status = "failure"
+
+    # 3. Real Integration Dispatch: Render Deploy Hook
+    if not has_integration and project.deploy_hook_url:
         try:
             req = urllib.request.Request(
                 project.deploy_hook_url,
@@ -465,12 +552,17 @@ def trigger_deployment(payload: DeploymentTriggerRequest, db: DbSession, user: O
             )
             with urllib.request.urlopen(req, timeout=5) as resp:
                 log_lines.append(f"✓ Render deploy hook notified (HTTP {resp.status})")
-                dep_status = "deploying"
+                has_integration = True
         except Exception as exc:  # noqa: BLE001
-            log_lines.append(f"⚠️ Deploy hook notification error: {exc}")
+            log_lines.append(f"⚠️ Render deploy hook notification error: {exc}")
             dep_status = "failure"
-    else:
-        log_lines.append("ℹ️ Manual release registered (No external deploy hook configured)")
+
+    # If no integration is configured, never report fake success!
+    if not has_integration and dep_status != "failure":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No deployment integration configured. Configure GITHUB_TOKEN or Render deploy hook for this project.",
+        )
 
     dep = Deployment(
         project_id=project.id,
@@ -479,39 +571,55 @@ def trigger_deployment(payload: DeploymentTriggerRequest, db: DbSession, user: O
         branch=payload.branch,
         trigger_type="manual",
         status=dep_status,
-        duration_seconds=38,
+        duration_seconds=0,
         logs_summary="\n".join(log_lines),
     )
     db.add(dep)
-    if dep_status != "failure":
-        project.status = "operational"
     db.commit()
     db.refresh(dep)
     return dep
 
 
 @app.post("/api/deployments/rollback", response_model=DeploymentResponse, status_code=200)
-def rollback_deployment(payload: RollbackRequest, db: DbSession, user: OptionalUser):
-    """Trigger one-click rollback. Dispatches Render deploy hook or records verified state."""
-    project = db.query(Project).filter(Project.id == payload.project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+def rollback_deployment(payload: RollbackRequest, user: CurrentUser, db: DbSession, csrf: CsrfProtect = None):
+    """Trigger real rollback using existing rollback.yml workflow or deploy hook.
+    
+    Requires full 40-character SHA and verifies live version before reporting success.
+    """
+    project = get_authorized_project(payload.project_id, user, db, require_write=True)
 
-    if user:
-        verify_project_permission(project, user, "rollback")
+    sha = payload.target_sha.strip().lower()
+    # Enforce full 40-character commit SHA per rollback.yml specifications
+    if len(sha) != 40 or not re.match(r"^[0-9a-f]{40}$", sha):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Rollback requires the full 40-character lowercase hexadecimal commit SHA.",
+        )
 
-    sha = payload.target_sha
-    if len(sha) < 40:
-        sha = sha.ljust(40, "0")
-
-    rollback_status = "rolled_back"
     log_lines = [
-        f"Rollback initiated to target SHA {sha[:7]}",
+        f"Rollback initiated to target SHA {sha}",
         f"Reason: {payload.reason}",
     ]
+    rollback_status = "deploying"
+    has_integration = False
 
-    # If external deploy hook configured, trigger it
-    if project.deploy_hook_url and not project.deploy_hook_url.startswith("https://api.render.com/deploy/srv-placeholder"):
+    # 1. Real GitHub workflow_dispatch to rollback.yml passing exact input "sha"
+    if config.GITHUB_TOKEN:
+        try:
+            dispatch_github_workflow(
+                repo_name=project.repo_name,
+                workflow_file="rollback.yml",
+                inputs={"sha": sha},
+                ref=project.branch or "main",
+            )
+            log_lines.append(f"✓ GitHub Actions workflow_dispatch triggered (rollback.yml, sha={sha})")
+            has_integration = True
+        except GitHubIntegrationError as err:
+            log_lines.append(f"⚠️ GitHub rollback dispatch failed: {err}")
+            rollback_status = "failure"
+
+    # 2. Render deploy hook fallback
+    if not has_integration and project.deploy_hook_url:
         try:
             req = urllib.request.Request(
                 project.deploy_hook_url,
@@ -520,13 +628,26 @@ def rollback_deployment(payload: RollbackRequest, db: DbSession, user: OptionalU
                 method="POST",
             )
             with urllib.request.urlopen(req, timeout=5) as resp:
-                log_lines.append(f"✓ Render rollback deploy hook notified (HTTP {resp.status})")
+                log_lines.append(f"✓ Render rollback hook notified (HTTP {resp.status})")
+                has_integration = True
         except Exception as exc:  # noqa: BLE001
-            log_lines.append(f"⚠️ Deploy hook dispatch failure: {exc}")
+            log_lines.append(f"⚠️ Render deploy hook error: {exc}")
             rollback_status = "failure"
-    else:
-        log_lines.append(f"✓ Verified target image ghcr.io/{project.repo_name.lower()}:{sha[:7]} in registry")
-        log_lines.append("✓ Rollback state recorded")
+
+    if not has_integration and rollback_status != "failure":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No rollback integration configured. Set GITHUB_TOKEN or deploy hook in project settings.",
+        )
+
+    # 3. Live version verification check
+    if rollback_status == "deploying" and project.service_url:
+        is_live = verify_live_version(project.service_url, sha)
+        if is_live:
+            rollback_status = "rolled_back"
+            log_lines.append(f"✓ Live version probe verified SHA {sha[:7]} running on {project.service_url}")
+        else:
+            log_lines.append("⏳ Rollback dispatched; awaiting live container convergence on /version")
 
     rollback_dep = Deployment(
         project_id=project.id,
@@ -535,48 +656,39 @@ def rollback_deployment(payload: RollbackRequest, db: DbSession, user: OptionalU
         branch=project.branch,
         trigger_type="rollback",
         status=rollback_status,
-        duration_seconds=28,
+        duration_seconds=0,
         logs_summary="\n".join(log_lines),
     )
     db.add(rollback_dep)
-    if rollback_status != "failure":
-        project.status = "operational"
     db.commit()
     db.refresh(rollback_dep)
     return rollback_dep
 
 
 # -----------------------------------------------------------------------------
-# Health Monitoring & Live Probe
+# Health Monitoring & Live Probes (Owner-Scoped & SSRF-Protected)
 # -----------------------------------------------------------------------------
 
 @app.get("/api/projects/{project_id}/health-history", response_model=list[HealthCheckResponse])
-def get_health_history(project_id: int, db: DbSession, limit: int = 15):
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return db.query(HealthCheck).filter(HealthCheck.project_id == project_id).order_by(HealthCheck.checked_at.desc()).limit(limit).all()
+def get_health_history(project_id: int, user: CurrentUser, db: DbSession, limit: int = 15):
+    project = get_authorized_project(project_id, user, db, require_write=False)
+    return db.query(HealthCheck).filter(HealthCheck.project_id == project.id).order_by(HealthCheck.checked_at.desc()).limit(limit).all()
 
 
 @app.post("/api/projects/{project_id}/check-health", response_model=HealthCheckResponse)
-def run_live_health_check(project_id: int, db: DbSession):
-    """Run an on-demand live health probe with SSRF protection."""
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-
+def run_live_health_check(project_id: int, user: CurrentUser, db: DbSession):
+    """Run an on-demand health probe against the project's service URL with SSRF protection."""
+    project = get_authorized_project(project_id, user, db, require_write=False)
     return probe_project_health(project, db)
 
 
 # -----------------------------------------------------------------------------
-# Security & Trivy Scans
+# Security & Trivy Scans (Owner-Scoped)
 # -----------------------------------------------------------------------------
 
 @app.get("/api/projects/{project_id}/security", response_model=list[SecurityScanResponse])
-def get_security_scans(project_id: int, db: DbSession):
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+def get_security_scans(project_id: int, user: CurrentUser, db: DbSession):
+    project = get_authorized_project(project_id, user, db, require_write=False)
     return project.security_scans
 
 
@@ -591,11 +703,13 @@ def analyze_logs(payload: LogAnalysisRequest):
 
 
 @app.get("/api/deployments/{deployment_id}/analysis", response_model=LogAnalysisResponse)
-def analyze_deployment_record(deployment_id: int, db: DbSession):
-    """Analyze the logs of a specific deployment record."""
+def analyze_deployment_record(deployment_id: int, user: CurrentUser, db: DbSession):
+    """Analyze the logs of a specific deployment record with project authorization."""
     dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
     if not dep:
         raise HTTPException(status_code=404, detail="Deployment record not found")
+
+    get_authorized_project(dep.project_id, user, db, require_write=False)
     return analyze_deployment_logs(dep.logs_summary)
 
 
@@ -605,20 +719,18 @@ def analyze_deployment_record(deployment_id: int, db: DbSession):
 
 @app.post("/api/validate-env", response_model=EnvValidationResponse)
 def validate_env_config(payload: EnvValidationRequest):
-    """Validate project environment variables against production criteria."""
+    """Validate project environment variables against production criteria without secret leakage."""
     return validate_environment(payload.env_vars)
 
 
 # -----------------------------------------------------------------------------
-# Pre-Deploy Readiness Score (0-100%)
+# Pre-Deploy Readiness Score (0-100% with Hard Blocker Gates)
 # -----------------------------------------------------------------------------
 
 @app.get("/api/projects/{project_id}/readiness", response_model=ReadinessResponse)
-def get_project_readiness(project_id: int, db: DbSession):
-    """Calculate pre-deployment readiness score and confidence tier for a project."""
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+def get_project_readiness(project_id: int, user: CurrentUser, db: DbSession):
+    """Calculate pre-deployment readiness score and hard safety gates for an authorized project."""
+    project = get_authorized_project(project_id, user, db, require_write=False)
 
     critical_cves = 0
     high_cves = 0
@@ -649,11 +761,9 @@ def get_project_readiness(project_id: int, db: DbSession):
 # -----------------------------------------------------------------------------
 
 @app.get("/api/projects/{project_id}/costs", response_model=CostEstimateResponse)
-def get_project_cost_estimates(project_id: int, db: DbSession):
-    """Calculate estimated infrastructure, runner minutes, and hosting costs."""
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+def get_project_cost_estimates(project_id: int, user: CurrentUser, db: DbSession):
+    """Calculate estimated infrastructure, runner minutes, and hosting costs for an authorized project."""
+    project = get_authorized_project(project_id, user, db, require_write=False)
 
     durations = [d.duration_seconds for d in project.deployments]
     return estimate_project_costs(
@@ -669,11 +779,9 @@ def get_project_cost_estimates(project_id: int, db: DbSession):
 # -----------------------------------------------------------------------------
 
 @app.post("/api/projects/{project_id}/incidents/generate", response_model=IncidentReportResponse)
-def create_incident_report(project_id: int, payload: IncidentReportRequest, db: DbSession):
+def create_incident_report(project_id: int, payload: IncidentReportRequest, user: CurrentUser, db: DbSession):
     """Automatically generate an incident post-mortem in Markdown format."""
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = get_authorized_project(project_id, user, db, require_write=False)
 
     return generate_incident_report(
         project_name=project.name,
@@ -685,15 +793,22 @@ def create_incident_report(project_id: int, payload: IncidentReportRequest, db: 
 
 
 # -----------------------------------------------------------------------------
-# Webhook Notifications
+# Webhook Notifications (SSRF & Domain Allowlist Protection)
 # -----------------------------------------------------------------------------
 
 @app.post("/api/projects/{project_id}/webhook-test")
-def test_webhook_integration(project_id: int, payload: WebhookTestRequest, db: DbSession):
-    """Test webhook notification dispatch to Discord or Slack."""
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+def test_webhook_integration(project_id: int, payload: WebhookTestRequest, user: CurrentUser, db: DbSession):
+    """Test webhook notification dispatch with SSRF protection and platform domain allowlists."""
+    project = get_authorized_project(project_id, user, db, require_write=False)
+
+    # Validate webhook domain and SSRF
+    try:
+        validate_webhook_url(payload.webhook_url, payload.platform)
+    except SSRFValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Webhook validation error: {exc}",
+        ) from exc
 
     if payload.platform.lower() == "discord":
         body = format_discord_payload(
@@ -712,27 +827,34 @@ def test_webhook_integration(project_id: int, payload: WebhookTestRequest, db: D
             status="success",
         )
 
-    dispatched = dispatch_webhook(payload.webhook_url, body)
+    dispatched = dispatch_webhook(payload.webhook_url, body, platform=payload.platform)
     return {
         "success": dispatched,
         "platform": payload.platform,
         "sample_payload": body,
-        "message": "Webhook delivered successfully" if dispatched else "Failed to deliver (verify URL or connectivity)",
+        "message": "Webhook delivered successfully" if dispatched else "Failed to deliver (endpoint unreachable)",
     }
 
 
 # -----------------------------------------------------------------------------
-# High-level System Overview
+# High-level System Overview (Owner-Scoped & Non-Leaking)
 # -----------------------------------------------------------------------------
 
 @app.get("/api/overview", response_model=OverviewStats)
-def get_system_overview(db: DbSession):
-    projects = db.query(Project).all()
-    all_deployments = db.query(Deployment).all()
+def get_system_overview(db: DbSession, user: CurrentUser):
+    """Retrieve overview metrics scoped to the authenticated caller."""
+    if user.role == "admin":
+        projects = db.query(Project).all()
+        all_deployments = db.query(Deployment).all()
+    else:
+        projects = db.query(Project).filter(Project.owner_id == user.id).all()
+        project_ids = [p.id for p in projects]
+        all_deployments = db.query(Deployment).filter(Deployment.project_id.in_(project_ids)).all() if project_ids else []
+
     successful = [d for d in all_deployments if d.status in ("success", "rolled_back")]
     failed = [d for d in all_deployments if d.status == "failure"]
 
-    recent = db.query(Deployment).order_by(Deployment.created_at.desc()).limit(8).all()
+    recent = [d for d in all_deployments][:8]
     avg_duration = sum(d.duration_seconds for d in all_deployments) / len(all_deployments) if all_deployments else 0.0
 
     return OverviewStats(

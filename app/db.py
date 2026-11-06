@@ -37,6 +37,20 @@ class User(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     projects = relationship("Project", back_populates="owner")
+    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_token = Column(String(64), unique=True, nullable=False, index=True)
+    csrf_token = Column(String(64), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+
+    user = relationship("User", back_populates="sessions")
 
 
 class Project(Base):
@@ -72,9 +86,10 @@ class Deployment(Base):
     commit_message = Column(String(255), default="")
     branch = Column(String(50), default="main")
     trigger_type = Column(String(30), default="git_push")  # git_push, manual, rollback
-    status = Column(String(30), default="success")  # success, failure, building, rolled_back
-    duration_seconds = Column(Integer, default=45)
+    status = Column(String(30), default="queued")  # queued, deploying, success, failure, rolled_back
+    duration_seconds = Column(Integer, default=0)
     logs_summary = Column(Text, default="")
+    workflow_run_id = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
 
     project = relationship("Project", back_populates="deployments")
@@ -121,129 +136,71 @@ def get_db() -> Generator:
         db.close()
 
 
+def seed_demo_fixtures(db: SessionLocal):
+    """Explicitly isolated demo fixture seeder. Only active in demo mode."""
+    demo_user = db.query(User).filter(User.username == "demo-developer").first()
+    if not demo_user:
+        from .auth import hash_password
+
+        demo_user = User(
+            username="demo-developer",
+            email="demo@deployeasy.local",
+            password_hash=hash_password("demo123456!"),
+            role="demo",
+            is_active=True,
+        )
+        db.add(demo_user)
+        db.flush()
+
+    existing_demo_project = db.query(Project).filter(Project.repo_name == "demo/sample-service").first()
+    if not existing_demo_project:
+        demo_project = Project(
+            name="Demo Sample Service",
+            repo_name="demo/sample-service",
+            branch="main",
+            service_url="https://demo.deployeasy.local",
+            deploy_hook_url="",
+            status="operational",
+            owner_id=demo_user.id,
+        )
+        db.add(demo_project)
+        db.flush()
+
+        # Add demo deployments clearly flagged as demo data
+        db.add(Deployment(
+            project_id=demo_project.id,
+            commit_sha="e3876ac91fd2c97491d904b7264817c9135a907b",
+            commit_message="[DEMO] Initial verified container build",
+            branch="main",
+            trigger_type="manual",
+            status="success",
+            duration_seconds=45,
+            logs_summary="✓ Demo pipeline test passed",
+        ))
+        db.commit()
+
+
 def init_db():
-    """Create all tables and seed initial data if empty."""
+    """Create all tables and seed default admin user. Real production data remains clean."""
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
-        # Check if users exist, seed admin & demo user
-        demo_user = db.query(User).filter(User.username == "demo-developer").first()
-        if not demo_user:
-            # PBKDF2 hash for 'demopassword123'
-            demo_user = User(
-                username="demo-developer",
-                email="demo@deployeasy.local",
-                password_hash="6d7a6e1189ac3f0e$5cfc5040e6c80521ad97d627c2f0f844ae4b834789520556b624f2b96e95c106",
-                role="demo",
-                is_active=True,
-            )
+        admin_user = db.query(User).filter(User.username == "admin").first()
+        if not admin_user:
+            from .auth import hash_password
+
             admin_user = User(
                 username="admin",
                 email="admin@deployeasy.local",
-                password_hash="6d7a6e1189ac3f0e$5cfc5040e6c80521ad97d627c2f0f844ae4b834789520556b624f2b96e95c106",
+                password_hash=hash_password("admin123456!"),
                 role="admin",
                 is_active=True,
             )
-            db.add(demo_user)
             db.add(admin_user)
-            db.flush()
-
-        # Check if any project exists
-        existing = db.query(Project).first()
-        if not existing:
-            default_project = Project(
-                name="DeployEasy Service",
-                repo_name=config.GITHUB_REPO or "harshit5afk/deployeasy",
-                branch="main",
-                service_url=config.SERVICE_URL or "http://localhost:8080",
-                deploy_hook_url=config.RENDER_DEPLOY_HOOK_URL or "https://api.render.com/deploy/srv-placeholder",
-                status="operational",
-                owner_id=demo_user.id if demo_user else None,
-            )
-            db.add(default_project)
-            db.flush()
-
-            # Seed realistic historical deployments
-            initial_deployments = [
-                Deployment(
-                    project_id=default_project.id,
-                    commit_sha=config.GIT_SHA if len(config.GIT_SHA) == 40 else "e3876ac91fd2c97491d904b7264817c9135a907b",
-                    commit_message="feat(platform): deploy verified container with automated healthcheck & rollback",
-                    branch="main",
-                    trigger_type="git_push",
-                    status="success",
-                    duration_seconds=52,
-                    logs_summary="✓ Tests passed (Ruff + pytest)\n✓ Image scanned with Trivy (0 vulnerabilities)\n✓ Deployed to Render\n✓ Smoke test verified live SHA",
-                ),
-                Deployment(
-                    project_id=default_project.id,
-                    commit_sha="40e54ca854b79b1d38ae859069d273a216c52bb1",
-                    commit_message="feat(ui): modern developer platform landing page and interactive telemetry",
-                    branch="main",
-                    trigger_type="git_push",
-                    status="success",
-                    duration_seconds=47,
-                    logs_summary="✓ Build succeeded\n✓ Published ghcr.io/harshit5afk/deployeasy:40e54ca\n✓ Health verified in 18s",
-                ),
-                Deployment(
-                    project_id=default_project.id,
-                    commit_sha="26ea6421398bb290ef4081c748bb7014b2d56a12",
-                    commit_message="docs: phase 7a & 8 - architecture diagrams, demo script, and complete README",
-                    branch="main",
-                    trigger_type="git_push",
-                    status="success",
-                    duration_seconds=41,
-                    logs_summary="✓ Documentation updated\n✓ Pipeline tests passed",
-                ),
-                Deployment(
-                    project_id=default_project.id,
-                    commit_sha="ef1482f7c0099ad4bb5e58db5f32cf8e51928014",
-                    commit_message="feat(ops): manual rollback by SHA with GHCR verification and incident playbook",
-                    branch="main",
-                    trigger_type="rollback",
-                    status="rolled_back",
-                    duration_seconds=38,
-                    logs_summary="✓ Rollback requested to SHA ef1482f\n✓ Verified image in GHCR\n✓ Rolled back live deployment in 22s",
-                ),
-            ]
-            for dep in initial_deployments:
-                db.add(dep)
-
-            # Seed recent health checks
-            initial_checks = [
-                HealthCheck(project_id=default_project.id, endpoint="/health", status_code=200, response_time_ms=14.2, is_healthy=True),
-                HealthCheck(project_id=default_project.id, endpoint="/version", status_code=200, response_time_ms=11.8, is_healthy=True),
-                HealthCheck(project_id=default_project.id, endpoint="/metrics", status_code=200, response_time_ms=9.5, is_healthy=True),
-            ]
-            for hc in initial_checks:
-                db.add(hc)
-
-            # Seed security scans
-            trivy_scan = SecurityScan(
-                project_id=default_project.id,
-                scan_type="trivy",
-                target="ghcr.io/harshit5afk/deployeasy:latest",
-                critical_count=0,
-                high_count=0,
-                medium_count=1,
-                low_count=3,
-                passed=True,
-                findings_json='[{"pkg": "urllib3", "severity": "MEDIUM", "cve": "CVE-2024-37891", "fixed_version": "2.2.2"}]',
-            )
-            gitleaks_scan = SecurityScan(
-                project_id=default_project.id,
-                scan_type="gitleaks",
-                target="git-history (all branches)",
-                critical_count=0,
-                high_count=0,
-                medium_count=0,
-                low_count=0,
-                passed=True,
-                findings_json='[]',
-            )
-            db.add(trivy_scan)
-            db.add(gitleaks_scan)
-
             db.commit()
+
+        # Only seed demo fixtures if explicitly configured via environment variable
+        if config.DEPLOYEASY_DEMO_MODE:
+            seed_demo_fixtures(db)
     finally:
         db.close()

@@ -1481,13 +1481,26 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
 const $ = id => document.getElementById(id);
 const esc = s => String(s || '').replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
 
-let selectedProjectId = 1;
+let selectedProjectId = null;
 let pendingRollbackSha = null;
 
-function getAuthHeaders() {
-  const token = localStorage.getItem('deployeasy_token');
-  const h = { 'Content-Type': 'application/json' };
-  if (token) h['Authorization'] = 'Bearer ' + token;
+function selectProject(id) {
+  selectedProjectId = id;
+  refreshAllData();
+}
+
+// Remove legacy tokens if present
+localStorage.removeItem('deployeasy_token');
+
+function getCsrfToken() {
+  const match = document.cookie.match(new RegExp('(^| )deployeasy_csrf=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : '';
+}
+
+function getAuthHeaders(extraHeaders = {}) {
+  const h = { 'Content-Type': 'application/json', ...extraHeaders };
+  const csrf = getCsrfToken();
+  if (csrf) h['X-CSRF-Token'] = csrf;
   return h;
 }
 
@@ -1561,6 +1574,10 @@ function initiateRollback(sha) {
 }
 
 async function executeRollback() {
+  if (!selectedProjectId) {
+    alert('Please select or connect a project first.');
+    return;
+  }
   if (!pendingRollbackSha) return;
   closeModal('modal-confirm-rollback');
   try {
@@ -1599,6 +1616,8 @@ async function handleCreateProject(e) {
       body: JSON.stringify(payload)
     });
     if (res.ok) {
+      const created = await res.json();
+      selectedProjectId = created.id;
       closeModal('modal-add-project');
       alert('✓ Project connected successfully!');
       refreshAllData();
@@ -1611,6 +1630,10 @@ async function handleCreateProject(e) {
 
 async function handleTriggerDeploy(e) {
   e.preventDefault();
+  if (!selectedProjectId) {
+    alert('Please connect or select a project first before triggering deployment.');
+    return;
+  }
   const payload = {
     project_id: selectedProjectId,
     commit_sha: $('deploy-sha').value,
@@ -1634,19 +1657,43 @@ async function handleTriggerDeploy(e) {
   } catch(err) { alert('Network error: ' + err.message); }
 }
 
-async function triggerHealthProbe() {
+async function triggerHealthProbe(projId) {
+  const targetId = projId || selectedProjectId;
+  if (!targetId) {
+    alert('Please connect or select a project first before probing health.');
+    return;
+  }
   try {
-    const res = await fetch(`/api/projects/${selectedProjectId}/check-health`, { method: 'POST' });
+    const res = await fetch(`/api/projects/${targetId}/check-health`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: getAuthHeaders()
+    });
     if (res.ok) {
       const check = await res.json();
       $('mon-latency').textContent = Math.round(check.response_time_ms) + 'ms';
       alert(`✓ Live Health Probe Succeeded! (Status: ${check.status_code} in ${check.response_time_ms}ms)`);
       loadHealthHistory();
+    } else {
+      const err = await res.json();
+      alert('Health probe failed: ' + (err.detail || 'Could not probe service'));
     }
   } catch(e) { alert('Probe failed: ' + e.message); }
 }
 
 async function loadReadinessScore() {
+  if (!selectedProjectId) {
+    $('full-score').textContent = '--';
+    $('quick-score').textContent = '--';
+    $('full-tier').textContent = 'NO PROJECT';
+    $('full-tier').className = 'badge-status badge-warning';
+    $('quick-tier').textContent = 'NO PROJECT';
+    $('quick-tier').className = 'badge-status badge-warning';
+    $('full-rec').textContent = 'Connect a project to evaluate pre-deploy readiness.';
+    $('quick-rec').textContent = 'Connect a project to evaluate pre-deploy readiness.';
+    $('readiness-checklist-table').innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No project selected. Connect a project to evaluate readiness.</td></tr>';
+    return;
+  }
   try {
     const res = await fetch(`/api/projects/${selectedProjectId}/readiness`);
     if (!res.ok) return;
@@ -1687,7 +1734,8 @@ async function runEnvValidation() {
   try {
     const res = await fetch('/api/validate-env', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      headers: getAuthHeaders(),
       body: JSON.stringify({ env_vars: dict })
     });
     if (res.ok) {
@@ -1737,6 +1785,11 @@ async function probeEndpoint(path, btnElement) {
 }
 
 async function loadHealthHistory() {
+  if (!selectedProjectId) {
+    $('mon-latency').textContent = '--';
+    $('health-history-table').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No project selected. Connect a project to view health history.</td></tr>';
+    return;
+  }
   try {
     const res = await fetch(`/api/projects/${selectedProjectId}/health-history`);
     if (!res.ok) return;
@@ -1752,11 +1805,21 @@ async function loadHealthHistory() {
           <td>${new Date(h.checked_at).toLocaleTimeString()}</td>
         </tr>
       `).join('');
+    } else {
+      $('health-history-table').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No health probe history recorded yet.</td></tr>';
     }
   } catch(e) { console.error(e); }
 }
 
 async function loadCostEstimator() {
+  if (!selectedProjectId) {
+    $('cost-monthly-spend').textContent = '$0.00';
+    $('cost-runner-mins').textContent = '0 min';
+    $('cost-storage-gb').textContent = '0 GB';
+    $('cost-breakdown-table').innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No project selected. Connect a project to view cost estimates.</td></tr>';
+    $('cost-recommendations-list').innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 1rem;">No project selected.</div>';
+    return;
+  }
   try {
     const res = await fetch(`/api/projects/${selectedProjectId}/costs`);
     if (!res.ok) return;
@@ -1804,12 +1867,17 @@ async function loadCostEstimator() {
 
 async function handleSendWebhookTest(e) {
   e.preventDefault();
+  if (!selectedProjectId) {
+    alert('Please connect or select a project first.');
+    return;
+  }
   const platform = $('webhook-platform').value;
   const url = $('webhook-url').value;
   try {
     const res = await fetch(`/api/projects/${selectedProjectId}/webhook-test`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      headers: getAuthHeaders(),
       body: JSON.stringify({ webhook_url: url, platform: platform })
     });
     const data = await res.json();
@@ -1839,10 +1907,15 @@ async function viewDeploymentDiff(depId) {
 }
 
 async function generateIncidentPostMortem(depId, sha) {
+  if (!selectedProjectId) {
+    alert('Please connect or select a project first.');
+    return;
+  }
   try {
     const res = await fetch(`/api/projects/${selectedProjectId}/incidents/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         failed_sha: sha,
         rollback_sha: 'ef1482f7c0099ad4bb5e58db5f32cf8e51928014',
@@ -1869,7 +1942,11 @@ function copyPostMortemToClipboard() {
 
 async function refreshAllData() {
   try {
-    const res = await fetch('/api/overview');
+    const res = await fetch('/api/overview', { credentials: 'same-origin' });
+    if (res.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
     if (!res.ok) return;
     const overview = await res.json();
 
@@ -1911,23 +1988,32 @@ async function refreshAllData() {
       `;
       $('overview-deployments-table').innerHTML = recent.slice(0, 5).map(renderRow).join('');
       $('deployments-full-table').innerHTML = recent.map(renderRow).join('');
+    } else {
+      $('overview-deployments-table').innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No deployments recorded yet. Connect a project to start deploying.</td></tr>';
+      $('deployments-full-table').innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No deployments recorded yet.</td></tr>';
     }
 
     const projs = overview.projects || [];
     if (projs.length > 0) {
-      selectedProjectId = projs[0].id;
+      if (!selectedProjectId || !projs.some(p => p.id === selectedProjectId)) {
+        selectedProjectId = projs[0].id;
+      }
       $('projects-table').innerHTML = projs.map(p => `
-        <tr>
+        <tr style="${p.id === selectedProjectId ? 'background: rgba(139, 92, 246, 0.08);' : ''}">
           <td style="font-weight: 700;">${esc(p.name)}</td>
           <td><a href="https://github.com/${esc(p.repo_name)}" target="_blank" style="color: var(--primary); text-decoration: none;">${esc(p.repo_name)}</a></td>
           <td><span class="code-sha">${esc(p.branch)}</span></td>
           <td><span class="badge-status badge-success">${esc(p.status)}</span></td>
           <td><span style="font-size: 0.82rem; color: var(--text-dim);">${esc(p.service_url || 'Default local')}</span></td>
           <td>
-            <button class="btn-sm-primary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="triggerHealthProbe()">Probe Health</button>
+            <button class="btn-sm-primary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="selectProject(${p.id})">${p.id === selectedProjectId ? '✓ Active' : 'Select'}</button>
+            <button class="btn-sm-primary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; background: rgba(255,255,255,0.08);" onclick="triggerHealthProbe(${p.id})">Probe</button>
           </td>
         </tr>
       `).join('');
+    } else {
+      selectedProjectId = null;
+      $('projects-table').innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No projects connected yet. Click "+ Connect New Project" above to get started.</td></tr>';
     }
 
     loadHealthHistory();

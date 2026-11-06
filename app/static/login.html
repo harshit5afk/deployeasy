@@ -319,11 +319,11 @@ footer {
 
 <script>
 function quickDemoLogin() {
-  fetch('/api/auth/demo-login', { method: 'POST' })
+  localStorage.removeItem('deployeasy_token');
+  fetch('/api/auth/demo-login', { method: 'POST', credentials: 'same-origin' })
     .then(r => r.json())
     .then(data => {
-      if (data.token) {
-        localStorage.setItem('deployeasy_token', data.token);
+      if (data.user) {
         localStorage.setItem('deployeasy_user', JSON.stringify(data.user));
       }
       window.location.href = '/dashboard';
@@ -335,23 +335,25 @@ function quickDemoLogin() {
 
 async function handleEmailAuth(e) {
   e.preventDefault();
+  localStorage.removeItem('deployeasy_token');
   const email = document.getElementById('auth-email').value;
   const pass = document.getElementById('auth-pass').value;
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: email, password: pass })
     });
     if (res.ok) {
       const data = await res.json();
-      localStorage.setItem('deployeasy_token', data.token);
       localStorage.setItem('deployeasy_user', JSON.stringify(data.user));
       window.location.href = '/dashboard';
     } else {
       // Auto-register if new developer
       const reg = await fetch('/api/auth/register', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_'),
@@ -361,7 +363,6 @@ async function handleEmailAuth(e) {
       });
       if (reg.ok) {
         const d = await reg.json();
-        localStorage.setItem('deployeasy_token', d.token);
         localStorage.setItem('deployeasy_user', JSON.stringify(d.user));
         window.location.href = '/dashboard';
       } else {
