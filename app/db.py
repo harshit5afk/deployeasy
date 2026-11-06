@@ -181,23 +181,28 @@ def seed_demo_fixtures(db: SessionLocal):
 
 
 def init_db():
-    """Create all tables and seed default admin user. Real production data remains clean."""
+    """Create all tables and optionally seed admin user from environment variables.
+    
+    Zero hardcoded credentials or password hashes exist in production code.
+    """
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
-        admin_user = db.query(User).filter(User.username == "admin").first()
-        if not admin_user:
-            from .auth import hash_password
+        # Only seed admin if explicit password is provided in environment
+        if config.DEPLOYEASY_ADMIN_PASSWORD:
+            admin_user = db.query(User).filter(User.username == config.DEPLOYEASY_ADMIN_USER).first()
+            if not admin_user:
+                from .auth import hash_password
 
-            admin_user = User(
-                username="admin",
-                email="admin@deployeasy.local",
-                password_hash=hash_password("admin123456!"),
-                role="admin",
-                is_active=True,
-            )
-            db.add(admin_user)
-            db.commit()
+                admin_user = User(
+                    username=config.DEPLOYEASY_ADMIN_USER,
+                    email=config.DEPLOYEASY_ADMIN_EMAIL,
+                    password_hash=hash_password(config.DEPLOYEASY_ADMIN_PASSWORD),
+                    role="admin",
+                    is_active=True,
+                )
+                db.add(admin_user)
+                db.commit()
 
         # Only seed demo fixtures if explicitly configured via environment variable
         if config.DEPLOYEASY_DEMO_MODE:

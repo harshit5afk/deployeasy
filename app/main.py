@@ -80,6 +80,7 @@ from .schemas import (
 from .ssrf import (
     SSRFValidationError,
     safe_urlopen,
+    validate_deploy_hook_url,
     validate_target_url,
     validate_webhook_url,
 )
@@ -184,12 +185,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="DeployEasy", lifespan=lifespan)
 
-# Enable CORS for cross-origin client apps
+# Enable CORS for explicit origins only - never wildcard origin with credentials
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -309,8 +310,9 @@ def login_user(payload: UserLogin, request: Request, response: Response, db: DbS
 
 
 @app.post("/api/auth/demo-login", response_model=AuthTokenResponse)
-def demo_login(response: Response, db: DbSession):
+def demo_login(request: Request, response: Response, db: DbSession):
     """Create a secured demo session with read-only sandbox permissions."""
+    check_auth_rate_limit(request)
     demo_user = db.query(User).filter(User.username == "demo-developer").first()
     if not demo_user:
         demo_user = User(
@@ -341,7 +343,7 @@ def current_user_identity(user: CurrentUser):
 
 
 @app.post("/api/auth/logout")
-def logout_user(request: Request, response: Response, db: DbSession):
+def logout_user(request: Request, response: Response, db: DbSession, csrf: CsrfProtect = None):
     """Invalidate session in database and clear authentication cookies."""
     token = request.cookies.get("deployeasy_session")
     if not token:
@@ -416,6 +418,13 @@ def create_project(payload: ProjectCreate, user: CurrentUser, db: DbSession, csr
             validate_target_url(payload.service_url)
         except SSRFValidationError as err:
             raise HTTPException(status_code=400, detail=f"Invalid service_url: {err}") from err
+
+    # SSRF validation on deploy hook URL if provided
+    if payload.deploy_hook_url:
+        try:
+            validate_deploy_hook_url(payload.deploy_hook_url)
+        except SSRFValidationError as err:
+            raise HTTPException(status_code=400, detail=f"Invalid deploy_hook_url: {err}") from err
 
     existing = db.query(Project).filter(Project.repo_name == payload.repo_name).first()
     if existing:
@@ -544,13 +553,12 @@ def trigger_deployment(payload: DeploymentTriggerRequest, user: CurrentUser, db:
     # 3. Real Integration Dispatch: Render Deploy Hook
     if not has_integration and project.deploy_hook_url:
         try:
-            req = urllib.request.Request(
+            with safe_urlopen(
                 project.deploy_hook_url,
                 data=b"",
                 headers={"User-Agent": "DeployEasy-Deployer/1.0"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=5) as resp:
+                timeout=5.0,
+            ) as resp:
                 log_lines.append(f"✓ Render deploy hook notified (HTTP {resp.status})")
                 has_integration = True
         except Exception as exc:  # noqa: BLE001
@@ -621,13 +629,12 @@ def rollback_deployment(payload: RollbackRequest, user: CurrentUser, db: DbSessi
     # 2. Render deploy hook fallback
     if not has_integration and project.deploy_hook_url:
         try:
-            req = urllib.request.Request(
+            with safe_urlopen(
                 project.deploy_hook_url,
                 data=b"",
                 headers={"User-Agent": "DeployEasy-Rollback/1.0"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=5) as resp:
+                timeout=5.0,
+            ) as resp:
                 log_lines.append(f"✓ Render rollback hook notified (HTTP {resp.status})")
                 has_integration = True
         except Exception as exc:  # noqa: BLE001
@@ -676,7 +683,7 @@ def get_health_history(project_id: int, user: CurrentUser, db: DbSession, limit:
 
 
 @app.post("/api/projects/{project_id}/check-health", response_model=HealthCheckResponse)
-def run_live_health_check(project_id: int, user: CurrentUser, db: DbSession):
+def run_live_health_check(project_id: int, user: CurrentUser, db: DbSession, csrf: CsrfProtect = None):
     """Run an on-demand health probe against the project's service URL with SSRF protection."""
     project = get_authorized_project(project_id, user, db, require_write=False)
     return probe_project_health(project, db)
@@ -779,7 +786,13 @@ def get_project_cost_estimates(project_id: int, user: CurrentUser, db: DbSession
 # -----------------------------------------------------------------------------
 
 @app.post("/api/projects/{project_id}/incidents/generate", response_model=IncidentReportResponse)
-def create_incident_report(project_id: int, payload: IncidentReportRequest, user: CurrentUser, db: DbSession):
+def create_incident_report(
+    project_id: int,
+    payload: IncidentReportRequest,
+    user: CurrentUser,
+    db: DbSession,
+    csrf: CsrfProtect = None,
+):
     """Automatically generate an incident post-mortem in Markdown format."""
     project = get_authorized_project(project_id, user, db, require_write=False)
 
@@ -797,7 +810,13 @@ def create_incident_report(project_id: int, payload: IncidentReportRequest, user
 # -----------------------------------------------------------------------------
 
 @app.post("/api/projects/{project_id}/webhook-test")
-def test_webhook_integration(project_id: int, payload: WebhookTestRequest, user: CurrentUser, db: DbSession):
+def test_webhook_integration(
+    project_id: int,
+    payload: WebhookTestRequest,
+    user: CurrentUser,
+    db: DbSession,
+    csrf: CsrfProtect = None,
+):
     """Test webhook notification dispatch with SSRF protection and platform domain allowlists."""
     project = get_authorized_project(project_id, user, db, require_write=False)
 

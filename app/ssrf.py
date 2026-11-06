@@ -107,6 +107,23 @@ def validate_webhook_url(url: str, platform: str) -> str:
     return validate_target_url(url)
 
 
+def validate_deploy_hook_url(url: str, allow_local_for_testing: bool = False) -> str:
+    """Validate that deploy hook URL is HTTPS and resolves exclusively to public services."""
+    if not url or not isinstance(url, str):
+        raise SSRFValidationError("Deploy hook URL must be a non-empty string.")
+
+    parsed = urllib.parse.urlparse(url.strip())
+    scheme = parsed.scheme.lower()
+    if scheme != "https":
+        raise SSRFValidationError("Deploy hook endpoints must use HTTPS.")
+
+    hostname = (parsed.hostname or "").lower()
+    if not hostname:
+        raise SSRFValidationError("Deploy hook URL must include a valid hostname.")
+
+    return validate_target_url(url, allow_local_for_testing=allow_local_for_testing)
+
+
 class SSRFSafeRedirectHandler(urllib.request.HTTPRedirectHandler):
     """Custom HTTP redirect handler that validates redirect targets against SSRF rules."""
 

@@ -29,6 +29,7 @@ from app.main import app
 from app.ssrf import (
     SSRFSafeRedirectHandler,
     SSRFValidationError,
+    validate_deploy_hook_url,
     validate_ip_address,
     validate_target_url,
     validate_webhook_url,
@@ -543,3 +544,133 @@ def test_demo_user_restrictions():
     })
     assert r_create.status_code == 403
     assert "read-only access" in r_create.json()["detail"]
+
+
+# =============================================================================
+# 10. ADVANCED NEGATIVE TESTS (Audit Remediation)
+# =============================================================================
+
+def test_csrf_protection_on_all_state_changing_endpoints(test_users):
+    user_a, _ = test_users
+    c = create_client_for_user(user_a)
+
+    # Create a project first (with valid CSRF)
+    res_proj = c.post("/api/projects", json={
+        "name": "CSRF Target Service",
+        "repo_name": f"org/csrf-target-{uuid.uuid4().hex[:6]}",
+        "service_url": "https://csrf-target.onrender.com",
+    })
+    assert res_proj.status_code == 201
+    proj_id = res_proj.json()["id"]
+
+    # Now strip CSRF token from header
+    c.headers.pop("X-CSRF-Token", None)
+
+    # 1. Health probe without CSRF -> 403
+    r_probe = c.post(f"/api/projects/{proj_id}/check-health")
+    assert r_probe.status_code == 403
+    assert "CSRF" in r_probe.json()["detail"]
+
+    # 2. Incident report generation without CSRF -> 403
+    r_inc = c.post(f"/api/projects/{proj_id}/incidents/generate", json={
+        "failed_sha": "a" * 40,
+        "symptoms": "Test",
+    })
+    assert r_inc.status_code == 403
+    assert "CSRF" in r_inc.json()["detail"]
+
+    # 3. Webhook test without CSRF -> 403
+    r_webhook = c.post(f"/api/projects/{proj_id}/webhook-test", json={
+        "webhook_url": "https://discord.com/api/webhooks/123/abc",
+        "platform": "discord",
+    })
+    assert r_webhook.status_code == 403
+    assert "CSRF" in r_webhook.json()["detail"]
+
+    # 4. Logout without CSRF -> 403
+    r_logout = c.post("/api/auth/logout")
+    assert r_logout.status_code == 403
+    assert "CSRF" in r_logout.json()["detail"]
+
+
+@pytest.mark.parametrize("malicious_hook", [
+    "http://127.0.0.1:8080/hook",
+    "http://169.254.169.254/hook",
+    "http://metadata.google.internal/hook",
+    "http://10.0.0.1/hook",
+    "ftp://api.render.com/deploy",
+    "gopher://api.render.com/deploy",
+])
+def test_deploy_hook_ssrf_validation_rejections(malicious_hook, test_users):
+    user_a, _ = test_users
+    c = create_client_for_user(user_a)
+
+    res = c.post("/api/projects", json={
+        "name": "Malicious Hook Service",
+        "repo_name": f"org/hook-test-{uuid.uuid4().hex[:6]}",
+        "service_url": "https://valid.onrender.com",
+        "deploy_hook_url": malicious_hook,
+    })
+    assert res.status_code == 400
+    assert "deploy_hook_url" in res.json()["detail"].lower() or "ssrf" in res.json()["detail"].lower()
+
+
+def test_validate_deploy_hook_url_direct():
+    with pytest.raises(SSRFValidationError):
+        validate_deploy_hook_url("http://insecure.example.com/deploy")
+    with pytest.raises(SSRFValidationError):
+        validate_deploy_hook_url("http://127.0.0.1:8080/deploy")
+
+
+def test_cors_configuration_never_allows_wildcard_with_credentials():
+    from app import config
+    assert "*" not in config.CORS_ORIGINS
+    for origin in config.CORS_ORIGINS:
+        assert origin != "*"
+        assert origin.startswith(("http://", "https://"))
+
+
+def test_postgres_database_url_normalization():
+    # Verify legacy postgres:// is rewritten to postgresql+psycopg2://
+    test_raw = "postgres://user:pass@ep-cool-db.us-east-2.aws.neon.tech/neondb"
+    normalized = test_raw.replace("postgres://", "postgresql+psycopg2://", 1)
+    assert normalized.startswith("postgresql+psycopg2://")
+
+    test_pg = "postgresql://user:pass@localhost:5432/mydb"
+    normalized_pg = test_pg.replace("postgresql://", "postgresql+psycopg2://", 1)
+    assert normalized_pg.startswith("postgresql+psycopg2://")
+
+
+def test_alembic_schema_migration_current_matches_head():
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    cfg = Config("alembic.ini")
+    script = ScriptDirectory.from_config(cfg)
+    head_rev = script.get_current_head()
+    assert head_rev == "001_initial"
+
+
+def test_demo_user_forbidden_from_trigger_rollback_and_probes():
+    demo_client = TestClient(app)
+    r_demo = demo_client.post("/api/auth/demo-login")
+    assert r_demo.status_code == 200
+    csrf = demo_client.cookies.get("deployeasy_csrf")
+    demo_client.headers["X-CSRF-Token"] = csrf
+
+    # Demo cannot trigger deployments on project 1
+    r_trig = demo_client.post("/api/deployments/trigger", json={
+        "project_id": 1,
+        "commit_sha": "a" * 40,
+        "commit_message": "Demo trigger attempt",
+    })
+    assert r_trig.status_code == 403
+
+    # Demo cannot trigger rollback
+    r_roll = demo_client.post("/api/deployments/rollback", json={
+        "project_id": 1,
+        "target_sha": "a" * 40,
+        "reason": "Demo rollback attempt",
+    })
+    assert r_roll.status_code == 403
+

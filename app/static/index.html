@@ -1017,59 +1017,17 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
   </div>
 
   <!-- TAB 7: SECURITY -->
+  <!-- TAB: SECURITY CENTER -->
   <div id="tab-security" class="tab-content">
     <div class="section-header">
       <div>
         <div class="section-title">Security & Supply Chain Center</div>
-        <div class="section-subtitle">Automated image vulnerability scans, secrets auditing, and supply chain updates</div>
+        <div class="section-subtitle">Real-time image vulnerability scans, secrets audits, and supply chain telemetry from CI/CD pipeline runs</div>
       </div>
     </div>
 
-    <div class="security-grid">
-      <div class="security-card">
-        <div class="stat-header">
-          <span class="stat-label">Trivy Container Scanner</span>
-          <span class="badge-status badge-success">PASSED</span>
-        </div>
-        <div style="margin: 1rem 0;">
-          <div style="font-size: 1.1rem; font-weight: 700;">ghcr.io/harshit5afk/deployeasy</div>
-          <div style="font-size: 0.8rem; color: var(--text-dim);">Scanned with severity gate: HIGH,CRITICAL</div>
-        </div>
-        <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
-          <span class="badge-status badge-success">0 Critical</span>
-          <span class="badge-status badge-success">0 High</span>
-          <span class="badge-status badge-warning">1 Medium</span>
-          <span class="badge-status" style="background: rgba(255,255,255,0.06);">3 Low</span>
-        </div>
-      </div>
-
-      <div class="security-card">
-        <div class="stat-header">
-          <span class="stat-label">Gitleaks Secrets Audit</span>
-          <span class="badge-status badge-success">PASSED</span>
-        </div>
-        <div style="margin: 1rem 0;">
-          <div style="font-size: 1.1rem; font-weight: 700;">Git Commit History Scan</div>
-          <div style="font-size: 0.8rem; color: var(--text-dim);">fetch-depth: 0 (Scanned all past commits)</div>
-        </div>
-        <div style="margin-top: 1rem; font-size: 0.85rem; color: #34d399;">
-          ✓ No API keys, credentials, or secrets detected in repository.
-        </div>
-      </div>
-
-      <div class="security-card">
-        <div class="stat-header">
-          <span class="stat-label">Dependabot Supply Chain</span>
-          <span class="badge-status badge-success">ACTIVE</span>
-        </div>
-        <div style="margin: 1rem 0;">
-          <div style="font-size: 1.1rem; font-weight: 700;">Pinned Action SHAs & Weekly Updates</div>
-          <div style="font-size: 0.8rem; color: var(--text-dim);">Ecosystems: pip, github-actions, docker</div>
-        </div>
-        <div style="margin-top: 1rem; font-size: 0.85rem; color: #34d399;">
-          ✓ Dependencies kept current; supply chain pinned to full commit SHAs.
-        </div>
-      </div>
+    <div id="security-scans-container" class="security-grid">
+      <!-- Populated dynamically via loadSecurityCenter() -->
     </div>
   </div>
 
@@ -1442,7 +1400,8 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
         <div>Duration Delta: <strong id="diff-duration" style="color: #fff;">--</strong></div>
       </div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+      <a id="diff-gh-link" href="#" target="_blank" class="btn-sm-primary" style="display: none; text-decoration: none;">View Comparison on GitHub ↗</a>
       <button type="button" class="btn-cancel" onclick="closeModal('modal-diff-view')">Close</button>
     </div>
   </div>
@@ -1517,6 +1476,7 @@ function switchTab(tabId) {
   if (tabId === 'readiness') loadReadinessScore();
   if (tabId === 'env') runEnvValidation();
   if (tabId === 'costs') loadCostEstimator();
+  if (tabId === 'security') loadSecurityCenter();
 }
 
 function openModal(id) { $(id).classList.add('open'); }
@@ -1865,6 +1825,53 @@ async function loadCostEstimator() {
   } catch(e) { console.error('Cost estimator error:', e); }
 }
 
+async function loadSecurityCenter() {
+  const container = $('security-scans-container');
+  if (!container) return;
+  if (!selectedProjectId) {
+    container.innerHTML = `
+      <div class="security-card" style="grid-column: 1 / -1; padding: 2rem; text-align: center;">
+        <div style="font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem;">No Project Selected</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">Select or connect a project to view security telemetry and scan audits.</div>
+      </div>
+    `;
+    return;
+  }
+  try {
+    const res = await fetch(`/api/projects/${selectedProjectId}/security`);
+    if (!res.ok) return;
+    const scans = await res.json();
+    if (scans.length === 0) {
+      container.innerHTML = `
+        <div class="security-card" style="grid-column: 1 / -1; padding: 2.25rem 1.5rem; text-align: center;">
+          <div style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 0.4rem;">No CI/CD Scan Reports Yet</div>
+          <div style="font-size: 0.88rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 1.25rem; line-height: 1.5;">
+            No vulnerability or secret scan reports recorded yet for this project. Scan results populate automatically when Trivy container scans or Gitleaks audits run in your CI/CD pipeline.
+          </div>
+          <span class="badge-status badge-warning">Awaiting Pipeline Telemetry</span>
+        </div>
+      `;
+      return;
+    }
+    container.innerHTML = scans.map(s => `
+      <div class="security-card">
+        <div class="stat-header">
+          <span class="stat-label">${esc(s.scan_type.toUpperCase())} SCANNER</span>
+          <span class="badge-status badge-${s.passed ? 'success' : 'danger'}">${s.passed ? 'PASSED' : 'ACTION REQUIRED'}</span>
+        </div>
+        <div style="margin: 1rem 0;">
+          <div style="font-size: 1.05rem; font-weight: 700; font-family: var(--font-mono);">${esc(s.target)}</div>
+          <div style="font-size: 0.8rem; color: var(--text-dim);">Recorded ${new Date(s.scanned_at).toLocaleString()}</div>
+        </div>
+        <div style="display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap;">
+          <span class="badge-status badge-${s.critical_count > 0 ? 'danger' : 'success'}">${s.critical_count} Critical</span>
+          <span class="badge-status badge-${s.high_count > 0 ? 'warning' : 'success'}">${s.high_count} High</span>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) { console.error('Security center error:', e); }
+}
+
 async function handleSendWebhookTest(e) {
   e.preventDefault();
   if (!selectedProjectId) {
@@ -1902,6 +1909,16 @@ async function viewDeploymentDiff(depId) {
     $('diff-trigger').textContent = diff.trigger_type.toUpperCase();
     const durDelta = diff.duration_difference;
     $('diff-duration').textContent = durDelta >= 0 ? `+${durDelta}s slower` : `${durDelta}s faster`;
+
+    const ghLink = $('diff-gh-link');
+    if (ghLink) {
+      if (diff.previous_sha && diff.previous_sha !== 'initial') {
+        ghLink.href = `https://github.com/${esc($('proj-repo') ? $('proj-repo').value : 'harshit5afk/deployeasy')}/compare/${diff.previous_sha}...${diff.current_sha}`;
+        ghLink.style.display = 'inline-flex';
+      } else {
+        ghLink.style.display = 'none';
+      }
+    }
     openModal('modal-diff-view');
   } catch(e) { alert('Could not fetch diff: ' + e.message); }
 }
@@ -2018,6 +2035,7 @@ async function refreshAllData() {
 
     loadHealthHistory();
     loadReadinessScore();
+    loadSecurityCenter();
   } catch(e) { console.error('Data refresh error:', e); }
 }
 
