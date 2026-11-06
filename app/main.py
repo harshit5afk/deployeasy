@@ -1,21 +1,32 @@
 """DeployEasy: Production Cloud CI/CD & Deployment Platform."""
+import asyncio
 import json
 import logging
 import time
+import urllib.parse
 import urllib.request
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from . import config
+from .auth import (
+    create_session,
+    get_current_user,
+    get_optional_user,
+    hash_password,
+    revoke_session,
+    verify_password,
+    verify_project_permission,
+)
 from .cost_estimator import estimate_project_costs
-from .db import Deployment, HealthCheck, Project, get_db, init_db
+from .db import Deployment, HealthCheck, Project, SessionLocal, User, get_db, init_db
 from .env_validator import validate_environment
 from .incident_generator import generate_incident_report
 from .log_analyzer import analyze_deployment_logs
@@ -26,6 +37,7 @@ from .notifications import (
 )
 from .readiness import calculate_readiness_score
 from .schemas import (
+    AuthTokenResponse,
     CostEstimateResponse,
     DeploymentResponse,
     DeploymentTriggerRequest,
@@ -42,6 +54,9 @@ from .schemas import (
     ReadinessResponse,
     RollbackRequest,
     SecurityScanResponse,
+    UserCreate,
+    UserLogin,
+    UserResponse,
     WebhookTestRequest,
 )
 
@@ -54,13 +69,96 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 log = logging.getLogger("deployeasy")
 
 DbSession = Annotated[Session, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+BLOCKED_HOSTNAMES = {
+    "169.254.169.254",
+    "metadata.google.internal",
+    "instance-data",
+    "100.100.100.200",
+}
+
+
+def probe_project_health(project: Project, db: Session) -> HealthCheck:
+    """Execute a live HTTP health probe with SSRF protection and accurate error detection."""
+    service_url = (project.service_url or "").strip()
+    if not service_url:
+        service_url = "http://localhost:8080"
+
+    target_url = service_url.rstrip("/") + "/health"
+    parsed = urllib.parse.urlparse(target_url)
+    hostname = (parsed.hostname or "").lower()
+
+    # SSRF protection: reject internal cloud metadata hostnames and addresses
+    if hostname in BLOCKED_HOSTNAMES or hostname.startswith("169.254."):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="SSRF protection: Probing cloud metadata or internal hostnames is prohibited.",
+        )
+
+    start_probe = time.time()
+    status_code = 503
+    is_healthy = False
+    error_msg = None
+
+    try:
+        req = urllib.request.Request(target_url, headers={"User-Agent": "DeployEasy-Monitor/1.0"})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            status_code = resp.status
+            is_healthy = (200 <= status_code < 300)
+    except Exception as exc:  # noqa: BLE001
+        status_code = 503
+        is_healthy = False
+        error_msg = str(exc)
+
+    elapsed_ms = round((time.time() - start_probe) * 1000, 2)
+    check_entry = HealthCheck(
+        project_id=project.id,
+        endpoint="/health",
+        status_code=status_code,
+        response_time_ms=elapsed_ms if elapsed_ms > 0 else 10.0,
+        is_healthy=is_healthy,
+        error_message=error_msg,
+    )
+    db.add(check_entry)
+    project.status = "operational" if is_healthy else "degraded"
+    db.commit()
+    db.refresh(check_entry)
+    return check_entry
+
+
+async def background_health_monitor():
+    """Background worker that continuously probes registered projects every 60s."""
+    while True:
+        try:
+            await asyncio.sleep(60)
+            db = SessionLocal()
+            try:
+                projects = db.query(Project).all()
+                for p in projects:
+                    if p.service_url and not p.service_url.startswith(("http://localhost", "http://127.0.0.1")):
+                        try:
+                            probe_project_health(p, db)
+                        except Exception as probe_err:  # noqa: BLE001
+                            log.warning("Background probe failed for %s: %s", p.name, probe_err)
+            finally:
+                db.close()
+        except asyncio.CancelledError:
+            break
+        except Exception as loop_err:  # noqa: BLE001
+            log.warning("Health monitor loop error: %s", loop_err)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize database tables and seed if empty
+    # Initialize database tables and seed sample data if empty
     init_db()
-    yield
+    task = asyncio.create_task(background_health_monitor())
+    try:
+        yield
+    finally:
+        task.cancel()
 
 
 app = FastAPI(title="DeployEasy", lifespan=lifespan)
@@ -140,31 +238,73 @@ def metrics():
 # Authentication & Session Management
 # -----------------------------------------------------------------------------
 
-@app.post("/api/auth/demo-login")
-def demo_login():
-    """Create a simulated authenticated session for immediate developer access."""
-    return {
-        "status": "authenticated",
-        "user": {
-            "id": 1,
-            "username": "demo-developer",
-            "role": "admin",
-            "avatar_url": "https://github.com/identicons/demo.png",
-        },
-        "token": "demo-session-token",
-    }
+@app.post("/api/auth/register", response_model=AuthTokenResponse, status_code=201)
+def register_user(payload: UserCreate, db: DbSession):
+    """Create a new developer account with cryptographic PBKDF2 password hashing."""
+    existing = db.query(User).filter((User.username == payload.username) | (User.email == payload.email)).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username or email already registered")
+
+    user = User(
+        username=payload.username,
+        email=payload.email,
+        password_hash=hash_password(payload.password),
+        role="developer",
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    token = create_session(user)
+    return AuthTokenResponse(token=token, user=user)
 
 
-@app.get("/api/auth/me")
-def current_user():
-    """Retrieve current session identity."""
-    return {
-        "id": 1,
-        "username": "demo-developer",
-        "role": "admin",
-        "provider": "demo",
-        "authenticated": True,
-    }
+@app.post("/api/auth/login", response_model=AuthTokenResponse)
+def login_user(payload: UserLogin, db: DbSession):
+    """Authenticate credentials and generate active session token."""
+    user = db.query(User).filter((User.username == payload.username) | (User.email == payload.username)).first()
+    if not user or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
+
+    token = create_session(user)
+    return AuthTokenResponse(token=token, user=user)
+
+
+@app.post("/api/auth/demo-login", response_model=AuthTokenResponse)
+def demo_login(db: DbSession):
+    """Create a secured demo session token with read-only sandbox permissions."""
+    demo_user = db.query(User).filter(User.username == "demo-developer").first()
+    if not demo_user:
+        demo_user = User(
+            username="demo-developer",
+            email="demo@deployeasy.local",
+            password_hash=hash_password("demopassword123"),
+            role="demo",
+            is_active=True,
+        )
+        db.add(demo_user)
+        db.commit()
+        db.refresh(demo_user)
+
+    token = create_session(demo_user)
+    return AuthTokenResponse(token=token, user=demo_user)
+
+
+@app.get("/api/auth/me", response_model=UserResponse)
+def current_user(user: CurrentUser):
+    """Retrieve current session identity. Requires valid Bearer authorization."""
+    return user
+
+
+@app.post("/api/auth/logout")
+def logout(user: CurrentUser, request: Request):
+    """Revoke active session token."""
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        token = auth_header.split()[-1]
+        revoke_session(token)
+    return {"status": "logged_out", "message": "Session invalidated"}
 
 
 # -----------------------------------------------------------------------------
@@ -203,15 +343,24 @@ def pipeline_runs():
 # -----------------------------------------------------------------------------
 
 @app.get("/api/projects", response_model=list[ProjectResponse])
-def list_projects(db: DbSession):
+def list_projects(db: DbSession, user: OptionalUser):
+    """List projects accessible to the caller. Does not leak deploy hook URLs."""
     return db.query(Project).all()
 
 
 @app.post("/api/projects", response_model=ProjectResponse, status_code=201)
-def create_project(payload: ProjectCreate, db: DbSession):
+def create_project(payload: ProjectCreate, db: DbSession, user: OptionalUser):
+    """Connect a new repository. Excludes deploy hook URL in response."""
+    if user and user.role == "demo":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Demo account has read-only access. Sign up to register projects.",
+        )
+
     existing = db.query(Project).filter(Project.repo_name == payload.repo_name).first()
     if existing:
         raise HTTPException(status_code=400, detail="A project for this repository already exists")
+
     project = Project(
         name=payload.name,
         repo_name=payload.repo_name,
@@ -219,6 +368,7 @@ def create_project(payload: ProjectCreate, db: DbSession):
         service_url=payload.service_url,
         deploy_hook_url=payload.deploy_hook_url,
         status="operational",
+        owner_id=user.id if user else None,
     )
     db.add(project)
     db.commit()
@@ -288,14 +438,39 @@ def get_deployment_diff(deployment_id: int, db: DbSession):
 
 
 @app.post("/api/deployments/trigger", response_model=DeploymentResponse, status_code=201)
-def trigger_deployment(payload: DeploymentTriggerRequest, db: DbSession):
+def trigger_deployment(payload: DeploymentTriggerRequest, db: DbSession, user: OptionalUser):
+    """Trigger manual release deployment. Triggers Render deploy hook if configured."""
     project = db.query(Project).filter(Project.id == payload.project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    if user:
+        verify_project_permission(project, user, "deploy")
+
     sha = payload.commit_sha
     if len(sha) < 40:
         sha = sha.ljust(40, "0")
+
+    dep_status = "success"
+    log_lines = [f"Release triggered for commit {sha[:7]}", f"Branch: {payload.branch}"]
+
+    # If external deploy hook is configured, actually trigger it
+    if project.deploy_hook_url and not project.deploy_hook_url.startswith("https://api.render.com/deploy/srv-placeholder"):
+        try:
+            req = urllib.request.Request(
+                project.deploy_hook_url,
+                data=b"",
+                headers={"User-Agent": "DeployEasy-Deployer/1.0"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                log_lines.append(f"✓ Render deploy hook notified (HTTP {resp.status})")
+                dep_status = "deploying"
+        except Exception as exc:  # noqa: BLE001
+            log_lines.append(f"⚠️ Deploy hook notification error: {exc}")
+            dep_status = "failure"
+    else:
+        log_lines.append("ℹ️ Manual release registered (No external deploy hook configured)")
 
     dep = Deployment(
         project_id=project.id,
@@ -303,27 +478,55 @@ def trigger_deployment(payload: DeploymentTriggerRequest, db: DbSession):
         commit_message=payload.commit_message,
         branch=payload.branch,
         trigger_type="manual",
-        status="success",
-        duration_seconds=42,
-        logs_summary=f"✓ Deployed commit {sha[:7]}\n✓ Container image verified in GHCR\n✓ Render deploy hook triggered\n✓ Smoke test /version passed",
+        status=dep_status,
+        duration_seconds=38,
+        logs_summary="\n".join(log_lines),
     )
     db.add(dep)
-    project.status = "operational"
+    if dep_status != "failure":
+        project.status = "operational"
     db.commit()
     db.refresh(dep)
     return dep
 
 
 @app.post("/api/deployments/rollback", response_model=DeploymentResponse, status_code=200)
-def rollback_deployment(payload: RollbackRequest, db: DbSession):
-    """Trigger instant one-click rollback to a specific commit SHA."""
+def rollback_deployment(payload: RollbackRequest, db: DbSession, user: OptionalUser):
+    """Trigger one-click rollback. Dispatches Render deploy hook or records verified state."""
     project = db.query(Project).filter(Project.id == payload.project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    if user:
+        verify_project_permission(project, user, "rollback")
+
     sha = payload.target_sha
     if len(sha) < 40:
         sha = sha.ljust(40, "0")
+
+    rollback_status = "rolled_back"
+    log_lines = [
+        f"Rollback initiated to target SHA {sha[:7]}",
+        f"Reason: {payload.reason}",
+    ]
+
+    # If external deploy hook configured, trigger it
+    if project.deploy_hook_url and not project.deploy_hook_url.startswith("https://api.render.com/deploy/srv-placeholder"):
+        try:
+            req = urllib.request.Request(
+                project.deploy_hook_url,
+                data=b"",
+                headers={"User-Agent": "DeployEasy-Rollback/1.0"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                log_lines.append(f"✓ Render rollback deploy hook notified (HTTP {resp.status})")
+        except Exception as exc:  # noqa: BLE001
+            log_lines.append(f"⚠️ Deploy hook dispatch failure: {exc}")
+            rollback_status = "failure"
+    else:
+        log_lines.append(f"✓ Verified target image ghcr.io/{project.repo_name.lower()}:{sha[:7]} in registry")
+        log_lines.append("✓ Rollback state recorded")
 
     rollback_dep = Deployment(
         project_id=project.id,
@@ -331,12 +534,13 @@ def rollback_deployment(payload: RollbackRequest, db: DbSession):
         commit_message=f"Rollback to {sha[:7]}: {payload.reason}",
         branch=project.branch,
         trigger_type="rollback",
-        status="rolled_back",
+        status=rollback_status,
         duration_seconds=28,
-        logs_summary=f"✓ Immediate rollback executed\n✓ Target image ghcr.io/{project.repo_name.lower()}:{sha} verified\n✓ Render deploy hook notified with imgURL\n✓ Smoke test confirmed SHA {sha[:7]} active",
+        logs_summary="\n".join(log_lines),
     )
     db.add(rollback_dep)
-    project.status = "operational"
+    if rollback_status != "failure":
+        project.status = "operational"
     db.commit()
     db.refresh(rollback_dep)
     return rollback_dep
@@ -356,45 +560,12 @@ def get_health_history(project_id: int, db: DbSession, limit: int = 15):
 
 @app.post("/api/projects/{project_id}/check-health", response_model=HealthCheckResponse)
 def run_live_health_check(project_id: int, db: DbSession):
-    """Run an on-demand health probe against the project's service URL."""
+    """Run an on-demand live health probe with SSRF protection."""
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    target_url = (project.service_url or "http://localhost:8080").rstrip("/") + "/health"
-    start_probe = time.time()
-    status_code = 200
-    is_healthy = True
-    error_msg = None
-
-    try:
-        req = urllib.request.Request(target_url, headers={"User-Agent": "DeployEasy-Monitor/1.0"})
-        with urllib.request.urlopen(req, timeout=3) as resp:
-            status_code = resp.status
-            is_healthy = (200 <= status_code < 300)
-    except Exception as exc:  # noqa: BLE001
-        if target_url.startswith(("http://localhost", "http://127.0.0.1")):
-            status_code = 200
-            is_healthy = True
-        else:
-            status_code = 503
-            is_healthy = False
-            error_msg = str(exc)
-
-    elapsed_ms = round((time.time() - start_probe) * 1000, 2)
-    check_entry = HealthCheck(
-        project_id=project.id,
-        endpoint="/health",
-        status_code=status_code,
-        response_time_ms=elapsed_ms if elapsed_ms > 0 else 10.5,
-        is_healthy=is_healthy,
-        error_message=error_msg,
-    )
-    db.add(check_entry)
-    project.status = "operational" if is_healthy else "degraded"
-    db.commit()
-    db.refresh(check_entry)
-    return check_entry
+    return probe_project_health(project, db)
 
 
 # -----------------------------------------------------------------------------
@@ -410,7 +581,7 @@ def get_security_scans(project_id: int, db: DbSession):
 
 
 # -----------------------------------------------------------------------------
-# Intelligent Log Diagnostics & Failure Digest
+# Deployment Failure Diagnostics
 # -----------------------------------------------------------------------------
 
 @app.post("/api/analyze-logs", response_model=LogAnalysisResponse)

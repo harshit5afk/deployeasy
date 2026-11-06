@@ -320,7 +320,12 @@ footer {
 <script>
 function quickDemoLogin() {
   fetch('/api/auth/demo-login', { method: 'POST' })
-    .then(() => {
+    .then(r => r.json())
+    .then(data => {
+      if (data.token) {
+        localStorage.setItem('deployeasy_token', data.token);
+        localStorage.setItem('deployeasy_user', JSON.stringify(data.user));
+      }
       window.location.href = '/dashboard';
     })
     .catch(() => {
@@ -328,9 +333,45 @@ function quickDemoLogin() {
     });
 }
 
-function handleEmailAuth(e) {
+async function handleEmailAuth(e) {
   e.preventDefault();
-  window.location.href = '/dashboard';
+  const email = document.getElementById('auth-email').value;
+  const pass = document.getElementById('auth-pass').value;
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: email, password: pass })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      localStorage.setItem('deployeasy_token', data.token);
+      localStorage.setItem('deployeasy_user', JSON.stringify(data.user));
+      window.location.href = '/dashboard';
+    } else {
+      // Auto-register if new developer
+      const reg = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_'),
+          email: email,
+          password: pass
+        })
+      });
+      if (reg.ok) {
+        const d = await reg.json();
+        localStorage.setItem('deployeasy_token', d.token);
+        localStorage.setItem('deployeasy_user', JSON.stringify(d.user));
+        window.location.href = '/dashboard';
+      } else {
+        const err = await reg.json();
+        alert('Authentication error: ' + (err.detail || 'Could not authenticate'));
+      }
+    }
+  } catch(err) {
+    alert('Network error: ' + err.message);
+  }
 }
 </script>
 </body>

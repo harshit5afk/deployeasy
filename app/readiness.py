@@ -59,8 +59,25 @@ def calculate_readiness_score(
     else:
         checklist.append({"category": "Rollback Readiness", "status": "WARN", "points": 0, "message": "No verified previous container image found for instant rollback."})
 
-    # Determine confidence tier
-    if score >= 85:
+    # Hard Safety Gates Check: A failure in tests, critical CVEs, or secrets is a hard blocker
+    hard_blockers: list[str] = []
+    if not tests_passed:
+        hard_blockers.append("Automated test suite failed assertions.")
+    if critical_vulns > 0:
+        hard_blockers.append(f"{critical_vulns} Critical severity CVE(s) detected in container image.")
+    if secrets_detected:
+        hard_blockers.append("Hardcoded secrets or credentials detected by Gitleaks.")
+
+    is_blocked = len(hard_blockers) > 0
+
+    # Determine confidence tier with hard safety enforcement
+    if is_blocked:
+        # Cap score to failing threshold
+        score = min(score, 35)
+        tier = "Deployment Blocked"
+        badge = "badge-danger"
+        recommendation = "CRITICAL SAFETY GATE TRIPPED: " + "; ".join(hard_blockers) + " Deployment strictly prohibited."
+    elif score >= 85:
         tier = "Ready for Production"
         badge = "badge-success"
         recommendation = "All critical gates passed. Safe to deploy."
@@ -71,7 +88,7 @@ def calculate_readiness_score(
     else:
         tier = "Deployment Blocked"
         badge = "badge-danger"
-        recommendation = "Resolve critical failures (tests, CVEs, or secrets) before deploying."
+        recommendation = "Resolve critical failures before deploying."
 
     return {
         "readiness_score": score,
@@ -80,5 +97,7 @@ def calculate_readiness_score(
         "badge_class": badge,
         "recommendation": recommendation,
         "checklist": checklist,
+        "deployment_blocked": is_blocked,
+        "blocking_reasons": hard_blockers,
     }
 

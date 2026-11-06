@@ -1484,6 +1484,13 @@ const esc = s => String(s || '').replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0)
 let selectedProjectId = 1;
 let pendingRollbackSha = null;
 
+function getAuthHeaders() {
+  const token = localStorage.getItem('deployeasy_token');
+  const h = { 'Content-Type': 'application/json' };
+  if (token) h['Authorization'] = 'Bearer ' + token;
+  return h;
+}
+
 function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
@@ -1559,7 +1566,7 @@ async function executeRollback() {
   try {
     const res = await fetch('/api/deployments/rollback', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         project_id: selectedProjectId,
         target_sha: pendingRollbackSha,
@@ -1588,7 +1595,7 @@ async function handleCreateProject(e) {
   try {
     const res = await fetch('/api/projects', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload)
     });
     if (res.ok) {
@@ -1613,7 +1620,7 @@ async function handleTriggerDeploy(e) {
   try {
     const res = await fetch('/api/deployments/trigger', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload)
     });
     if (res.ok) {

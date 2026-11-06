@@ -25,6 +25,20 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    email = Column(String(100), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(String(20), default="developer")  # "admin", "developer", "demo"
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+
+    projects = relationship("Project", back_populates="owner")
+
+
 class Project(Base):
     __tablename__ = "projects"
 
@@ -35,12 +49,18 @@ class Project(Base):
     service_url = Column(String(255), default="")
     deploy_hook_url = Column(String(255), default="")
     status = Column(String(30), default="operational")
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
+    owner = relationship("User", back_populates="projects")
     deployments = relationship("Deployment", back_populates="project", cascade="all, delete-orphan", order_by="desc(Deployment.created_at)")
     health_checks = relationship("HealthCheck", back_populates="project", cascade="all, delete-orphan", order_by="desc(HealthCheck.checked_at)")
     security_scans = relationship("SecurityScan", back_populates="project", cascade="all, delete-orphan", order_by="desc(SecurityScan.scanned_at)")
+
+    @property
+    def has_deploy_hook(self) -> bool:
+        return bool(self.deploy_hook_url and self.deploy_hook_url.strip())
 
 
 class Deployment(Base):
@@ -106,6 +126,28 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
+        # Check if users exist, seed admin & demo user
+        demo_user = db.query(User).filter(User.username == "demo-developer").first()
+        if not demo_user:
+            # PBKDF2 hash for 'demopassword123'
+            demo_user = User(
+                username="demo-developer",
+                email="demo@deployeasy.local",
+                password_hash="6d7a6e1189ac3f0e$5cfc5040e6c80521ad97d627c2f0f844ae4b834789520556b624f2b96e95c106",
+                role="demo",
+                is_active=True,
+            )
+            admin_user = User(
+                username="admin",
+                email="admin@deployeasy.local",
+                password_hash="6d7a6e1189ac3f0e$5cfc5040e6c80521ad97d627c2f0f844ae4b834789520556b624f2b96e95c106",
+                role="admin",
+                is_active=True,
+            )
+            db.add(demo_user)
+            db.add(admin_user)
+            db.flush()
+
         # Check if any project exists
         existing = db.query(Project).first()
         if not existing:
@@ -116,6 +158,7 @@ def init_db():
                 service_url=config.SERVICE_URL or "http://localhost:8080",
                 deploy_hook_url=config.RENDER_DEPLOY_HOOK_URL or "https://api.render.com/deploy/srv-placeholder",
                 status="operational",
+                owner_id=demo_user.id if demo_user else None,
             )
             db.add(default_project)
             db.flush()

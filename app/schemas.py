@@ -4,21 +4,56 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., min_length=5, max_length=100)
+    password: str = Field(..., min_length=6, max_length=100)
+
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    email: str
+    role: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AuthTokenResponse(BaseModel):
+    status: str = "authenticated"
+    token: str
+    user: UserResponse
+
+
 class ProjectBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     repo_name: str = Field(..., pattern=r"^[a-zA-Z0-9_\-\.]+\/[a-zA-Z0-9_\-\.]+$")
     branch: str = Field("main", max_length=50)
     service_url: str = Field("", max_length=255)
-    deploy_hook_url: str = Field("", max_length=255)
 
 
 class ProjectCreate(ProjectBase):
-    pass
+    deploy_hook_url: str = Field("", max_length=255)
+
+
+class ProjectUpdate(BaseModel):
+    name: str | None = None
+    branch: str | None = None
+    service_url: str | None = None
+    deploy_hook_url: str | None = None
 
 
 class ProjectResponse(ProjectBase):
     id: int
     status: str
+    owner_id: int | None = None
+    has_deploy_hook: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -136,6 +171,8 @@ class ReadinessResponse(BaseModel):
     badge_class: str
     recommendation: str
     checklist: list[ChecklistItem]
+    deployment_blocked: bool = False
+    blocking_reasons: list[str] = Field(default_factory=list)
 
 
 
