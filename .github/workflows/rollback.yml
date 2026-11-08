@@ -26,7 +26,7 @@ jobs:
         run: |
           [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Enter the full 40-character lowercase commit SHA"; exit 1; }
       # Pinned to v3.3.0 commit SHA
-      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
