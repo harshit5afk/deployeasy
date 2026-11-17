@@ -24,8 +24,17 @@ class SSRFValidationError(ValueError):
     """Raised when a target URL fails SSRF security constraints."""
 
 
+NAT64_PREFIX = ipaddress.IPv6Network("64:ff9b::/96")
+
+
 def validate_ip_address(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address) -> None:
     """Ensure an IP address is publicly routable and not in restricted ranges."""
+    # Handle RFC 6052 Well-Known NAT64 Prefix (64:ff9b::/96)
+    if isinstance(ip_obj, ipaddress.IPv6Address) and ip_obj in NAT64_PREFIX:
+        embedded_ipv4 = ipaddress.IPv4Address(ip_obj.packed[-4:])
+        validate_ip_address(embedded_ipv4)
+        return
+
     if (
         ip_obj.is_loopback
         or ip_obj.is_private

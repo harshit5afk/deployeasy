@@ -230,3 +230,21 @@ class IncidentReportResponse(BaseModel):
 class WebhookTestRequest(BaseModel):
     webhook_url: str = Field(..., min_length=10)
     platform: str = "discord"  # discord, slack, generic
+
+
+class SystemModeInfo(BaseModel):
+    id: str
+    name: str
+    icon: str
+    color: str
+    description: str
+
+
+class SystemModeResponse(BaseModel):
+    current_mode: str
+    available_modes: list[SystemModeInfo]
+
+
+class SystemModeUpdateRequest(BaseModel):
+    mode: str = Field(..., pattern=r"^(demo|sandbox|test)$")
+

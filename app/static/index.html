@@ -3,28 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DeployEasy • Cloud CI/CD & Deployment Platform</title>
+<title>DeployEasy • Cloud CI/CD & Deployment Observatory</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #090a0f;
-  --bg-card: rgba(18, 20, 29, 0.75);
-  --bg-card-hover: rgba(26, 29, 43, 0.9);
+  --bg: #07090e;
+  --bg-card: rgba(14, 18, 28, 0.85);
+  --bg-card-elevated: #111624;
+  --bg-card-hover: rgba(22, 28, 44, 0.95);
   --border: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(139, 92, 246, 0.5);
+  --border-focus: rgba(99, 102, 241, 0.5);
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --text-dim: #64748b;
   --primary: #8b5cf6;
   --primary-glow: rgba(139, 92, 246, 0.25);
   --accent: #6366f1;
-  --accent-pink: #ec4899;
-  --success: #10b981;
-  --success-glow: rgba(16, 185, 129, 0.25);
-  --warning: #f59e0b;
-  --error: #ef4444;
+  --cyan: #06b6d4;
+  --emerald: #10b981;
+  --rose: #f43f5e;
+  --amber: #f59e0b;
+  --blue: #3b82f6;
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
@@ -35,41 +36,43 @@ body {
   background-color: var(--bg);
   color: var(--text-main);
   font-family: var(--font-sans);
-  line-height: 1.6;
+  line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
   position: relative;
 }
 
 .ambient-glow {
-  position: absolute;
-  top: -120px;
+  position: fixed;
+  top: -160px;
   left: 50%;
   transform: translateX(-50%);
-  width: 900px;
-  height: 480px;
-  background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.18) 0%, rgba(99, 102, 241, 0.08) 45%, transparent 70%);
+  width: 1100px;
+  height: 520px;
+  background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.16) 0%, rgba(139, 92, 246, 0.07) 40%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
 
+/* Header */
 header {
   position: sticky;
   top: 0;
   z-index: 50;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  background: rgba(9, 10, 15, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(7, 9, 14, 0.94);
   border-bottom: 1px solid var(--border);
 }
 
 .header-container {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0.85rem 1.5rem;
+  padding: 0.65rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
 }
 
 .brand {
@@ -78,47 +81,315 @@ header {
   gap: 0.75rem;
   text-decoration: none;
   color: var(--text-main);
+  flex-shrink: 0;
 }
 
 .logo-badge {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 50%, var(--accent-pink) 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 16px var(--primary-glow);
+  box-shadow: 0 0 18px rgba(99, 102, 241, 0.35);
 }
 
 .logo-badge svg { width: 20px; height: 20px; fill: #fff; }
 
 .brand-text {
   font-size: 1.15rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.02em;
 }
 
-.brand-text span { color: var(--primary); }
+.brand-text span { color: #a78bfa; }
+
+
+/* Mode Selector Dropdown & Pills */
+.mode-selector-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.btn-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  color: #fbbf24;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.btn-mode-pill:hover {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.65);
+  transform: translateY(-1px);
+}
+
+.btn-mode-pill.mode-sandbox {
+  background: rgba(6, 182, 212, 0.12);
+  border-color: rgba(6, 182, 212, 0.38);
+  color: #38bdf8;
+}
+
+.btn-mode-pill.mode-sandbox:hover {
+  background: rgba(6, 182, 212, 0.22);
+  border-color: rgba(6, 182, 212, 0.65);
+}
+
+.btn-mode-pill.mode-test {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.38);
+  color: #34d399;
+}
+
+.btn-mode-pill.mode-test:hover {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: rgba(16, 185, 129, 0.65);
+}
+
+.mode-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.mode-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 290px;
+  background: #111522;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 0.5rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(20px);
+  z-index: 100;
+  display: none;
+  animation: fadeIn 0.18s ease;
+}
+
+.mode-dropdown.open {
+  display: block;
+}
+
+.mode-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-main);
+}
+
+.mode-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mode-item.active {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.mode-item-icon {
+  font-size: 1.25rem;
+}
+
+.mode-item-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.mode-item-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+  margin-top: 0.2rem;
+}
+
+.mode-item-badge {
+  font-size: 0.7rem;
+  color: var(--emerald);
+  font-weight: 700;
+  display: none;
+  margin-left: auto;
+}
+
+.mode-item.active .mode-item-badge {
+  display: block;
+}
+
+/* Active Environment Banner */
+.env-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1.15rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  transition: all 0.3s ease;
+}
+
+.env-banner.mode-sandbox {
+  background: rgba(6, 182, 212, 0.08);
+  border-color: rgba(6, 182, 212, 0.3);
+}
+
+.env-banner.mode-test {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.env-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.env-banner-icon {
+  font-size: 1.15rem;
+}
+
+.env-banner-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #fbbf24;
+}
+
+.env-banner.mode-sandbox .env-banner-title { color: #38bdf8; }
+.env-banner.mode-test .env-banner-title { color: #34d399; }
+
+.env-banner-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.env-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.btn-mode-switch {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.btn-mode-switch:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.btn-mode-switch.active {
+  background: rgba(99, 102, 241, 0.25);
+  color: #c7d2fe;
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.demo-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.85rem;
+  border-radius: 9999px;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fbbf24;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Tabs Wrapper & Scroll Controls */
+.nav-tabs-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  position: relative;
+  min-width: 0;
+  flex: 1;
+  justify-content: center;
+}
+
+.nav-scroll-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.nav-scroll-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  color: #fff;
+  border-color: rgba(99, 102, 241, 0.4);
+}
 
 .nav-tabs {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.25rem;
   list-style: none;
   background: rgba(255, 255, 255, 0.03);
-  padding: 0.25rem 0.4rem;
-  border-radius: 10px;
+  padding: 0.25rem 0.35rem;
+  border-radius: 12px;
   border: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  scroll-behavior: smooth;
+}
+
+.nav-tabs::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .nav-tab-btn {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  padding: 0.45rem 0.8rem;
-  border-radius: 7px;
-  font-size: 0.82rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -126,38 +397,41 @@ header {
   white-space: nowrap;
 }
 
-.nav-tab-btn:hover { color: var(--text-main); }
+.nav-tab-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
 .nav-tab-btn.active {
-  background: rgba(139, 92, 246, 0.2);
-  color: #c4b5fd;
-  border: 1px solid rgba(139, 92, 246, 0.35);
+  background: rgba(99, 102, 241, 0.22);
+  color: #c7d2fe;
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.2);
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   gap: 0.85rem;
+  flex-shrink: 0;
 }
 
 .status-pill {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.85rem;
+  padding: 0.35rem 0.9rem;
   border-radius: 9999px;
   background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  border: 1px solid rgba(16, 185, 129, 0.3);
   font-size: 0.82rem;
   font-weight: 600;
   color: #34d399;
+  white-space: nowrap;
 }
 
 .pulse-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--success);
-  box-shadow: 0 0 10px var(--success);
+  background: var(--emerald);
+  box-shadow: 0 0 10px var(--emerald);
   animation: pulse 2s infinite;
 }
 
@@ -171,27 +445,149 @@ header {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.42rem 0.9rem;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  padding: 0.42rem 0.95rem;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 9px;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.25);
 }
 
 .btn-sm-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px var(--primary-glow);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+}
+
+@media (max-width: 1280px) {
+  .header-container {
+    flex-wrap: wrap;
+    padding: 0.6rem 1.25rem;
+  }
+  .nav-tabs-wrapper {
+    order: 3;
+    width: 100%;
+    margin-top: 0.35rem;
+  }
+  .nav-tabs {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+
+/* User Navigation & Logout Controls */
+.user-menu-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.user-avatar-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.btn-header-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-header-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.75rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 8px;
+  color: #fca5a5;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.btn-logout:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.btn-back-to-dash {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 1.25rem;
+}
+
+.btn-back-to-dash:hover {
+  background: rgba(99, 102, 241, 0.15);
+  color: #c7d2fe;
+  border-color: rgba(99, 102, 241, 0.35);
 }
 
 main {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 2.5rem 1.5rem 5rem;
+  padding: 2rem 1.75rem 5rem;
   position: relative;
   z-index: 1;
 }
@@ -204,62 +600,17 @@ main {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Hero Section */
-.hero-banner {
-  text-align: center;
-  margin-bottom: 2.75rem;
-  background: radial-gradient(ellipse at top, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
-  padding: 2rem 1rem;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-}
-
-.hero-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.9rem;
-  border-radius: 9999px;
-  background: rgba(139, 92, 246, 0.12);
-  border: 1px solid rgba(139, 92, 246, 0.28);
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #c4b5fd;
-  margin-bottom: 1.25rem;
-}
-
-.hero-title {
-  font-size: clamp(2rem, 4vw, 3.2rem);
-  font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: -0.03em;
-  margin-bottom: 1rem;
-}
-
-.gradient-text {
-  background: linear-gradient(135deg, #a78bfa 0%, #818cf8 40%, #f472b6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.hero-desc {
-  max-width: 680px;
-  margin: 0 auto 1.5rem;
-  font-size: 1.05rem;
-  color: var(--text-muted);
-}
-
-/* Metrics Grid */
+/* Metric Cards with Top Colored Border (Reference: free-templates.net) */
 .grid-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 1.15rem;
-  margin-bottom: 2.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
 }
 
 .stat-card {
   background: var(--bg-card);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1.35rem 1.25rem;
@@ -268,9 +619,24 @@ main {
   overflow: hidden;
 }
 
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+}
+
+.stat-card.card-green::before { background: var(--emerald); }
+.stat-card.card-cyan::before { background: var(--cyan); }
+.stat-card.card-purple::before { background: var(--primary); }
+.stat-card.card-amber::before { background: var(--amber); }
+
 .stat-card:hover {
   background: var(--bg-card-hover);
-  border-color: rgba(139, 92, 246, 0.3);
+  border-color: rgba(99, 102, 241, 0.3);
   transform: translateY(-2px);
 }
 
@@ -278,37 +644,183 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.65rem;
 }
 
 .stat-label {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .stat-icon {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
-  background: rgba(139, 92, 246, 0.12);
+  background: rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a78bfa;
+  font-size: 1rem;
 }
 
 .stat-value {
-  font-size: 1.65rem;
+  font-size: 1.8rem;
   font-weight: 800;
   color: #ffffff;
   font-family: var(--font-mono);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.stat-progress-bar {
+  width: 100%;
+  height: 5px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.stat-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--accent);
 }
 
 .stat-subtext { font-size: 0.78rem; color: var(--text-dim); }
+
+/* Live Hardware / Telemetry Dashboard Grid (free-templates.net) */
+.telemetry-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .telemetry-grid { grid-template-columns: 1fr; }
+}
+
+.telemetry-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+}
+
+.telemetry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+}
+
+.telemetry-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hardware-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .hardware-metrics { grid-template-columns: repeat(2, 1fr); }
+}
+
+.hw-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.hw-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+}
+
+.hw-val {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: #fff;
+  margin-bottom: 0.25rem;
+}
+
+.hw-bar {
+  height: 4px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  margin-bottom: 0.35rem;
+  overflow: hidden;
+}
+
+.hw-fill { height: 100%; border-radius: 9999px; }
+
+.hw-sub { font-size: 0.7rem; color: var(--text-dim); }
+
+.runtimes-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.runtime-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* Request Distribution & Donut (free-templates.net) */
+.dist-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.dist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+}
+
+.dist-bar-wrap {
+  flex: 1;
+  margin: 0 1rem;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.dist-bar-fill { height: 100%; border-radius: 9999px; }
 
 /* Section Header */
 .section-header {
@@ -330,7 +842,7 @@ main {
 
 .section-subtitle { font-size: 0.82rem; color: var(--text-muted); }
 
-/* Table styling */
+/* Table styling with elevated feel */
 .data-table-container {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -348,31 +860,33 @@ main {
 
 .data-table th {
   background: rgba(255, 255, 255, 0.02);
-  padding: 0.85rem 1rem;
+  padding: 0.9rem 1rem;
   color: var(--text-muted);
-  font-weight: 600;
-  font-size: 0.78rem;
+  font-weight: 700;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   border-bottom: 1px solid var(--border);
 }
 
 .data-table td {
-  padding: 0.9rem 1rem;
+  padding: 1rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .data-table tr:last-child td { border-bottom: none; }
-.data-table tr:hover td { background: rgba(255, 255, 255, 0.02); }
+.data-table tr:hover td { background: rgba(255, 255, 255, 0.025); }
 
+/* Status Badges */
 .badge-status {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.2rem 0.55rem;
+  padding: 0.25rem 0.65rem;
   border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
@@ -385,16 +899,17 @@ main {
   font-size: 0.8rem;
   color: #a5f3fc;
   background: rgba(6, 182, 212, 0.1);
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(6, 182, 212, 0.2);
 }
 
 .btn-action-sm {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border);
   color: var(--text-main);
-  padding: 0.3rem 0.65rem;
-  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 7px;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
@@ -402,14 +917,14 @@ main {
   margin-right: 0.35rem;
 }
 
-.btn-action-sm:hover { background: rgba(255, 255, 255, 0.12); }
+.btn-action-sm:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255,255,255,0.2); }
 
 .btn-rollback {
   background: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: #f87171;
-  padding: 0.3rem 0.65rem;
-  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 7px;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
@@ -417,17 +932,230 @@ main {
 }
 
 .btn-rollback:hover {
-  background: rgba(239, 68, 68, 0.22);
+  background: rgba(239, 68, 68, 0.24);
   border-color: #ef4444;
 }
+
+/* Port.io Donut Scorecards */
+.scorecards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.scorecard-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.scorecard-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.scorecard-title {
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.donut-wrapper {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.donut-svg {
+  width: 150px;
+  height: 150px;
+  transform: rotate(-90deg);
+}
+
+.donut-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.05);
+  stroke-width: 16;
+}
+
+.donut-seg-green {
+  fill: none;
+  stroke: #10b981;
+  stroke-width: 16;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.5s ease;
+}
+
+.donut-seg-coral {
+  fill: none;
+  stroke: #f43f5e;
+  stroke-width: 16;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.5s ease;
+}
+
+.donut-center {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.donut-number {
+  font-size: 2.2rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.donut-label {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-top: 0.2rem;
+  font-weight: 700;
+}
+
+.scorecard-legend {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend-box {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+/* Moole.ai Security Severity Cards */
+.moole-summary-banner {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 860px) {
+  .moole-summary-banner { grid-template-columns: repeat(2, 1fr); }
+}
+
+.moole-sev-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.2s ease;
+}
+
+.moole-sev-card:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+}
+
+.moole-sev-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.sev-crit-icon { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+.sev-high-icon { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+.sev-med-icon { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+.sev-low-icon { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+.moole-sev-title { font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+.moole-sev-count { font-size: 1.5rem; font-weight: 800; font-family: var(--font-mono); color: #fff; }
+
+/* Cloudinfix FinOps Cards */
+.cloudinfix-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.finops-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.35rem 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.finops-card.fin-blue { border-top: 3px solid #3b82f6; }
+.finops-card.fin-cyan { border-top: 3px solid #06b6d4; }
+.finops-card.fin-emerald { border-top: 3px solid #10b981; }
+.finops-card.fin-amber { border-top: 3px solid #f59e0b; }
+
+.finops-label { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.35rem; }
+.finops-value { font-size: 1.8rem; font-weight: 800; font-family: var(--font-mono); color: #fff; margin-bottom: 0.25rem; }
+.finops-subtext { font-size: 0.78rem; color: var(--text-dim); }
+
+/* Splunk Incident / Diagnostics Header */
+.splunk-incident-banner {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(14, 18, 28, 0.95) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.splunk-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.splunk-title { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 0.25rem; }
+.splunk-meta { font-size: 0.82rem; color: var(--text-muted); }
 
 /* Modals */
 .modal-overlay {
   display: none;
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(10px);
   z-index: 100;
   align-items: center;
   justify-content: center;
@@ -437,13 +1165,13 @@ main {
 .modal-overlay.open { display: flex; }
 
 .modal-card {
-  background: #11131c;
+  background: #0f131d;
   border: 1px solid var(--border-focus);
   border-radius: 16px;
   width: 100%;
-  max-width: 560px;
+  max-width: 580px;
   padding: 1.75rem;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+  box-shadow: 0 25px 60px rgba(0,0,0,0.7);
   position: relative;
 }
 
@@ -463,8 +1191,11 @@ main {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 1.25rem;
+  font-size: 1.4rem;
+  line-height: 1;
 }
+
+.btn-close-modal:hover { color: #fff; }
 
 .form-group { margin-bottom: 1.15rem; }
 
@@ -489,7 +1220,7 @@ main {
   transition: border-color 0.2s;
 }
 
-.form-input:focus { border-color: var(--primary); }
+.form-input:focus { border-color: var(--accent); }
 
 .modal-footer {
   display: flex;
@@ -511,6 +1242,8 @@ main {
   font-weight: 600;
 }
 
+.btn-cancel:hover { background: rgba(255,255,255,0.05); color: #fff; }
+
 /* Console layout */
 .console-container {
   display: grid;
@@ -521,7 +1254,6 @@ main {
 
 @media (max-width: 860px) {
   .console-container { grid-template-columns: 1fr; }
-  .nav-tabs { overflow-x: auto; max-width: 100%; }
 }
 
 .console-controls {
@@ -553,8 +1285,8 @@ main {
   transition: all 0.2s ease;
 }
 
-.btn-endpoint:hover { background: rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.4); }
-.btn-endpoint.active { background: rgba(139, 92, 246, 0.18); border-color: var(--primary); }
+.btn-endpoint:hover { background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.4); }
+.btn-endpoint.active { background: rgba(99, 102, 241, 0.2); border-color: var(--accent); }
 
 .method-tag {
   background: #0284c7;
@@ -566,7 +1298,7 @@ main {
 }
 
 .console-output {
-  background: #06070a;
+  background: #05070a;
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1.25rem;
@@ -593,7 +1325,6 @@ pre#json-display {
   flex-grow: 1;
 }
 
-/* Security cards */
 .security-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -608,44 +1339,9 @@ pre#json-display {
   padding: 1.5rem;
 }
 
-/* Readiness Banner */
-.readiness-banner {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(16, 185, 129, 0.08) 100%);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: 16px;
-  padding: 1.75rem;
-  margin-bottom: 2.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.gauge-circle {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  border: 6px solid #10b981;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 20px var(--success-glow);
-}
-
-.gauge-score {
-  font-size: 1.8rem;
-  font-weight: 800;
-  font-family: var(--font-mono);
-  line-height: 1;
-}
-
-.gauge-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; }
-
 footer {
   border-top: 1px solid var(--border);
-  background: rgba(9, 10, 15, 0.9);
+  background: rgba(7, 9, 14, 0.95);
   padding: 2.5rem 1.5rem;
   text-align: center;
   font-size: 0.85rem;
@@ -670,25 +1366,30 @@ footer {
 <!-- Header -->
 <header>
   <div class="header-container">
-    <a href="#" class="brand">
+    <a href="/dashboard" onclick="switchTab('overview'); return false;" class="brand" title="DeployEasy Dashboard Overview">
       <div class="logo-badge">
         <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
       </div>
       <span class="brand-text">Deploy<span>Easy</span></span>
     </a>
 
-    <ul class="nav-tabs">
-      <li><button class="nav-tab-btn active" onclick="switchTab('overview')">Overview</button></li>
-      <li><button class="nav-tab-btn" onclick="switchTab('projects')">Projects</button></li>
-      <li><button class="nav-tab-btn" onclick="switchTab('deployments')">Deployments</button></li>
-      <li><button class="nav-tab-btn" onclick="switchTab('readiness')">Readiness Score</button></li>
-      <li><button class="nav-tab-btn" onclick="switchTab('env')">Env Validator</button></li>
-      <li><button class="nav-tab-btn" onclick="switchTab('monitoring')">Monitoring</button></li>
-      <li><button class="nav-tab-btn" onclick="switchTab('security')">Security</button></li>
-      <li><button class="nav-tab-btn" onclick="switchTab('costs')">Cost & FinOps</button></li>
-      <li><button class="nav-tab-btn" onclick="switchTab('webhooks')">Webhooks</button></li>
-      <li><button class="nav-tab-btn" onclick="switchTab('console')">API Console</button></li>
-    </ul>
+    <!-- Nav Tabs Wrapper with Smooth Scroll Chevrons & Wheel Support -->
+    <div class="nav-tabs-wrapper">
+      <button class="nav-scroll-btn" onclick="scrollTabs(-1)" title="Scroll Left">‹</button>
+      <ul class="nav-tabs" id="main-nav-tabs">
+        <li><button class="nav-tab-btn active" onclick="switchTab('overview')">Overview</button></li>
+        <li><button class="nav-tab-btn" onclick="switchTab('projects')">Projects</button></li>
+        <li><button class="nav-tab-btn" onclick="switchTab('deployments')">Deployments</button></li>
+        <li><button class="nav-tab-btn" onclick="switchTab('readiness')">Readiness</button></li>
+        <li><button class="nav-tab-btn" onclick="switchTab('env')">Env Validator</button></li>
+        <li><button class="nav-tab-btn" onclick="switchTab('monitoring')">Monitoring</button></li>
+        <li><button class="nav-tab-btn" onclick="switchTab('security')">Security</button></li>
+        <li><button class="nav-tab-btn" onclick="switchTab('costs')">FinOps</button></li>
+        <li><button class="nav-tab-btn" onclick="switchTab('webhooks')">Webhooks</button></li>
+        <li><button class="nav-tab-btn" onclick="switchTab('console')">API Console</button></li>
+      </ul>
+      <button class="nav-scroll-btn" onclick="scrollTabs(1)" title="Scroll Right">›</button>
+    </div>
 
     <div class="header-actions">
       <button class="btn-sm-primary" onclick="openModal('modal-add-project')">
@@ -697,88 +1398,191 @@ footer {
       </button>
       <div id="status-pill" class="status-pill">
         <span class="pulse-dot"></span>
-        <span id="status-text">Operational</span>
+        <span id="status-text">99.97% Operational</span>
+      </div>
+      <a href="/" class="btn-header-ghost" title="Landing Page / Product Overview">
+        <span>Home</span>
+      </a>
+      <div class="user-menu-group">
+        <div class="user-badge" id="nav-user-badge" title="Active Account">
+          <span class="user-avatar-dot" id="nav-user-avatar">D</span>
+          <span id="nav-user-name">developer</span>
+        </div>
+        <button class="btn-logout" onclick="logoutUser()" title="Logout from session">
+          <span>Logout</span>
+        </button>
       </div>
     </div>
   </div>
 </header>
 
 <main>
+  <!-- Active Demo Sandbox Banner -->
+  <div class="env-banner" id="env-mode-banner">
+    <div class="env-banner-left">
+      <span class="env-banner-icon" id="banner-mode-icon">⚡</span>
+      <div>
+        <span class="env-banner-title" id="banner-mode-title">LIVE DEMO SANDBOX</span> &mdash;
+        <span class="env-banner-desc" id="banner-mode-desc">Interactive dummy environment pre-loaded with sample fleet, deployment history, and live telemetry.</span>
+      </div>
+    </div>
+    <div class="env-banner-actions">
+      <span class="demo-badge-tag">⚡ Dummy Data Active</span>
+    </div>
+  </div>
+
   <!-- TAB 1: OVERVIEW -->
   <div id="tab-overview" class="tab-content active">
-    <section class="hero-banner">
-      <div class="hero-tag">
-        <span>⚡</span> Production Cloud CI/CD • Verified Containers • Instant Rollback
-      </div>
-      <h1 class="hero-title">
-        Unified Deployment Observability<br>
-        <span class="gradient-text">Engineered for Zero Silent Failures.</span>
-      </h1>
-      <p class="hero-desc">
-        DeployEasy connects to your GitHub repository, builds immutable Docker containers once, audits vulnerabilities with Trivy, validates health endpoints, and delivers one-click instant rollbacks.
-      </p>
-    </section>
-
-    <!-- Pre-deploy Readiness Quick Banner -->
-    <div class="readiness-banner">
-      <div style="display: flex; align-items: center; gap: 1.5rem;">
-        <div class="gauge-circle" id="quick-gauge">
-          <div class="gauge-score" id="quick-score">100</div>
-          <div class="gauge-label">Score</div>
-        </div>
-        <div>
-          <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem;">
-            <span style="font-size: 1.25rem; font-weight: 700;">Deployment Readiness</span>
-            <span class="badge-status badge-success" id="quick-tier">Ready for Production</span>
-          </div>
-          <p style="font-size: 0.85rem; color: var(--text-muted);" id="quick-rec">
-            All 5 critical release gates passed. Image scanned with 0 critical vulnerabilities.
-          </p>
-        </div>
-      </div>
-      <button class="btn-sm-primary" onclick="switchTab('readiness')">View Detailed Audit →</button>
-    </div>
-
-    <!-- Metrics Grid -->
+    
+    <!-- Top Stat Cards with Colored Top Borders (Reference: free-templates.net) -->
     <div class="grid-stats">
-      <div class="stat-card">
+      <div class="stat-card card-purple">
         <div class="stat-header">
           <span class="stat-label">Active Projects</span>
           <div class="stat-icon">📦</div>
         </div>
         <div class="stat-value" id="kpi-projects">1</div>
+        <div class="stat-progress-bar"><div class="stat-progress-fill" style="width: 100%; background: var(--primary);"></div></div>
         <div class="stat-subtext">Connected services running</div>
       </div>
 
-      <div class="stat-card">
+      <div class="stat-card card-cyan">
         <div class="stat-header">
           <span class="stat-label">Deploy Success Rate</span>
           <div class="stat-icon">🎯</div>
         </div>
         <div class="stat-value" id="kpi-success-rate">100%</div>
+        <div class="stat-progress-bar"><div class="stat-progress-fill" style="width: 100%; background: var(--cyan);"></div></div>
         <div class="stat-subtext">Across recent pipeline runs</div>
       </div>
 
-      <div class="stat-card">
+      <div class="stat-card card-green">
         <div class="stat-header">
           <span class="stat-label">Fleet Health</span>
           <div class="stat-icon">💚</div>
         </div>
         <div class="stat-value" id="kpi-fleet-health" style="color: #34d399;">HEALTHY</div>
+        <div class="stat-progress-bar"><div class="stat-progress-fill" style="width: 100%; background: var(--emerald);"></div></div>
         <div class="stat-subtext">Automated /health checks 200 OK</div>
       </div>
 
-      <div class="stat-card">
+      <div class="stat-card card-amber">
         <div class="stat-header">
           <span class="stat-label">Mean Deploy Time</span>
           <div class="stat-icon">⏱️</div>
         </div>
         <div class="stat-value" id="kpi-avg-duration">44s</div>
+        <div class="stat-progress-bar"><div class="stat-progress-fill" style="width: 45%; background: var(--amber);"></div></div>
         <div class="stat-subtext">Build, scan & smoke test</div>
       </div>
     </div>
 
-    <!-- Active Service & Recent Activity -->
+    <!-- Live Telemetry & System Health Grid (Reference: free-templates.net) -->
+    <div class="telemetry-grid">
+      <div class="telemetry-card">
+        <div class="telemetry-header">
+          <div class="telemetry-title">⚡ Process & Runtime Telemetry</div>
+          <span class="badge-status badge-success">LIVE STREAMING</span>
+        </div>
+
+        <div class="hardware-metrics">
+          <div class="hw-item">
+            <div class="hw-label">CPU Usage</div>
+            <div class="hw-val" style="color: #60a5fa;">34%</div>
+            <div class="hw-bar"><div class="hw-fill" style="width: 34%; background: #3b82f6;"></div></div>
+            <div class="hw-sub">8 cores · 3.2GHz</div>
+          </div>
+          <div class="hw-item">
+            <div class="hw-label">Memory</div>
+            <div class="hw-val" style="color: #a78bfa;">12.4GB</div>
+            <div class="hw-bar"><div class="hw-fill" style="width: 77%; background: #8b5cf6;"></div></div>
+            <div class="hw-sub">12.4 / 16 GB</div>
+          </div>
+          <div class="hw-item">
+            <div class="hw-label">Process Uptime</div>
+            <div class="hw-val" id="mon-uptime" style="color: #34d399;">--</div>
+            <div class="hw-bar"><div class="hw-fill" style="width: 100%; background: #10b981;"></div></div>
+            <div class="hw-sub">Current instance running</div>
+          </div>
+          <div class="hw-item">
+            <div class="hw-label">Requests Served</div>
+            <div class="hw-val" id="mon-requests" style="color: #f59e0b;">--</div>
+            <div class="hw-bar"><div class="hw-fill" style="width: 65%; background: #f59e0b;"></div></div>
+            <div class="hw-sub">Total HTTP queries</div>
+          </div>
+        </div>
+
+        <div class="runtimes-row">
+          <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Runtime & Services:</span>
+          <span class="runtime-badge"><span style="color: #34d399;">●</span> FastAPI 0.115</span>
+          <span class="runtime-badge"><span style="color: #34d399;">●</span> Python 3.12</span>
+          <span class="runtime-badge"><span style="color: #34d399;">●</span> SQLite / PostgreSQL</span>
+          <span class="runtime-badge"><span style="color: #34d399;">●</span> GHCR Registry</span>
+          <span class="runtime-badge"><span style="color: #34d399;">●</span> Render Cloud</span>
+        </div>
+      </div>
+
+      <!-- Traffic & Request Distribution (Reference: free-templates.net) -->
+      <div class="telemetry-card">
+        <div class="telemetry-header">
+          <div class="telemetry-title">📊 HTTP Request Distribution</div>
+          <span style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--text-muted);">1.2M total</span>
+        </div>
+
+        <div class="dist-bars">
+          <div class="dist-item">
+            <span style="color: #34d399; font-weight: 600;">● 2xx Success</span>
+            <div class="dist-bar-wrap"><div class="dist-bar-fill" style="width: 78%; background: #10b981;"></div></div>
+            <span style="font-family: var(--font-mono); color: var(--text-dim);">78%</span>
+          </div>
+          <div class="dist-item">
+            <span style="color: #60a5fa; font-weight: 600;">● 3xx Redirect</span>
+            <div class="dist-bar-wrap"><div class="dist-bar-fill" style="width: 12%; background: #3b82f6;"></div></div>
+            <span style="font-family: var(--font-mono); color: var(--text-dim);">12%</span>
+          </div>
+          <div class="dist-item">
+            <span style="color: #fbbf24; font-weight: 600;">● 4xx Client Err</span>
+            <div class="dist-bar-wrap"><div class="dist-bar-fill" style="width: 7%; background: #f59e0b;"></div></div>
+            <span style="font-family: var(--font-mono); color: var(--text-dim);">7%</span>
+          </div>
+          <div class="dist-item">
+            <span style="color: #f87171; font-weight: 600;">● 5xx Server Err</span>
+            <div class="dist-bar-wrap"><div class="dist-bar-fill" style="width: 3%; background: #ef4444;"></div></div>
+            <span style="font-family: var(--font-mono); color: var(--text-dim);">3%</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem; padding: 0.85rem; border-radius: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.1rem;">🛡️</span>
+            <div>
+              <div style="font-size: 0.8rem; font-weight: 700; color: #34d399;">Zero Silent Downtime</div>
+              <div style="font-size: 0.72rem; color: var(--text-dim);">Automated live smoke tests on /version</div>
+            </div>
+          </div>
+          <span style="font-size: 0.85rem; font-family: var(--font-mono); font-weight: 700; color: #34d399;">99.97%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Readiness Bar -->
+    <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+      <div style="display: flex; align-items: center; gap: 1.25rem;">
+        <div style="width: 54px; height: 54px; border-radius: 50%; border: 4px solid #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; font-family: var(--font-mono); color: #fff;" id="quick-gauge">
+          <span id="quick-score">100</span>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-weight: 700;">Pre-Deploy Readiness:</span>
+            <span class="badge-status badge-success" id="quick-tier">Ready for Production</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem;" id="quick-rec">All 5 critical release gates passed. Image scanned with 0 critical vulnerabilities.</p>
+        </div>
+      </div>
+      <button class="btn-sm-primary" onclick="switchTab('readiness')">View Scorecard Audit →</button>
+    </div>
+
+    <!-- Recent Deployment Activity -->
     <div class="section-header">
       <div>
         <div class="section-title">Recent Deployment Activity</div>
@@ -801,7 +1605,7 @@ footer {
           </tr>
         </thead>
         <tbody id="overview-deployments-table">
-          <tr><td colspan="7" style="text-align: center; color: var(--text-dim);">Loading deployments...</td></tr>
+          <tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 2rem;">Loading deployments...</td></tr>
         </tbody>
       </table>
     </div>
@@ -809,6 +1613,7 @@ footer {
 
   <!-- TAB 2: PROJECTS -->
   <div id="tab-projects" class="tab-content">
+    <button class="btn-back-to-dash" onclick="switchTab('overview')">← Back to Dashboard</button>
     <div class="section-header">
       <div>
         <div class="section-title">Connected Projects</div>
@@ -830,14 +1635,15 @@ footer {
           </tr>
         </thead>
         <tbody id="projects-table">
-          <tr><td colspan="6" style="text-align: center; color: var(--text-dim);">Loading projects...</td></tr>
+          <tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 2rem;">Loading projects...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- TAB 3: DEPLOYMENTS & ROLLBACK -->
+  <!-- TAB 3: DEPLOYMENTS & ROLLBACK (Reference: ZaneOps / Mage Pro) -->
   <div id="tab-deployments" class="tab-content">
+    <button class="btn-back-to-dash" onclick="switchTab('overview')">← Back to Dashboard</button>
     <div class="section-header">
       <div>
         <div class="section-title">Deployment Center & One-Click Rollback</div>
@@ -863,35 +1669,81 @@ footer {
           </tr>
         </thead>
         <tbody id="deployments-full-table">
-          <tr><td colspan="7" style="text-align: center; color: var(--text-dim);">Loading deployment history...</td></tr>
+          <tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 2rem;">Loading deployment history...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- TAB 4: READINESS SCORE -->
+  <!-- TAB 4: READINESS SCORE (Reference: Port.io Scorecards) -->
   <div id="tab-readiness" class="tab-content">
+    <button class="btn-back-to-dash" onclick="switchTab('overview')">← Back to Dashboard</button>
     <div class="section-header">
       <div>
-        <div class="section-title">Pre-Deploy Readiness Score (0-100%)</div>
-        <div class="section-subtitle">Comprehensive safety evaluation across 5 critical deployment dimensions</div>
+        <div class="section-title">Pre-Deploy Readiness Scorecards</div>
+        <div class="section-subtitle">Risk assessment across CI tests, container CVEs, secret scans, and fleet health</div>
       </div>
     </div>
 
-    <div class="readiness-banner">
-      <div style="display: flex; align-items: center; gap: 1.5rem;">
-        <div class="gauge-circle" id="full-gauge">
-          <div class="gauge-score" id="full-score">100</div>
-          <div class="gauge-label">Score</div>
-        </div>
-        <div>
-          <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem;">
-            <span style="font-size: 1.35rem; font-weight: 700;">Release Confidence:</span>
-            <span class="badge-status badge-success" id="full-tier">Ready for Production</span>
+    <!-- Side-by-Side Donut Scorecards (Reference: Port.io) -->
+    <div class="scorecards-container">
+      <div class="scorecard-card">
+        <div class="scorecard-header">
+          <div class="scorecard-title">
+            <span>⭕</span> Code Maturity Scorecard
           </div>
-          <p style="font-size: 0.9rem; color: var(--text-muted);" id="full-rec">
-            Evaluating release criteria...
-          </p>
+          <span class="badge-status badge-success" id="full-tier">Elite</span>
+        </div>
+
+        <div class="donut-wrapper" id="full-gauge">
+          <svg class="donut-svg" viewBox="0 0 160 160">
+            <circle class="donut-bg" cx="80" cy="80" r="62"/>
+            <circle class="donut-seg-green" cx="80" cy="80" r="62" stroke-dasharray="320 390" stroke-dashoffset="0"/>
+            <circle class="donut-seg-coral" cx="80" cy="80" r="62" stroke-dasharray="70 390" stroke-dashoffset="-320"/>
+          </svg>
+          <div class="donut-center">
+            <div class="donut-number" id="full-score">100</div>
+            <div class="donut-label">Readiness</div>
+          </div>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-bottom: 1rem;" id="full-rec">
+          All 5 critical release gates passed. Ready for zero-downtime deployment.
+        </p>
+
+        <div class="scorecard-legend">
+          <span class="legend-item"><span class="legend-box" style="background:#10b981;"></span> Elite (Pass)</span>
+          <span class="legend-item"><span class="legend-box" style="background:#f43f5e;"></span> Needs Review</span>
+        </div>
+      </div>
+
+      <div class="scorecard-card">
+        <div class="scorecard-header">
+          <div class="scorecard-title">
+            <span>🛡️</span> Security Posture Scorecard
+          </div>
+          <span class="badge-status badge-success">Hardened</span>
+        </div>
+
+        <div class="donut-wrapper">
+          <svg class="donut-svg" viewBox="0 0 160 160">
+            <circle class="donut-bg" cx="80" cy="80" r="62"/>
+            <circle class="donut-seg-green" cx="80" cy="80" r="62" stroke-dasharray="350 390" stroke-dashoffset="0" style="stroke: #06b6d4;"/>
+            <circle class="donut-seg-coral" cx="80" cy="80" r="62" stroke-dasharray="40 390" stroke-dashoffset="-350" style="stroke: #f59e0b;"/>
+          </svg>
+          <div class="donut-center">
+            <div class="donut-number" style="color: #06b6d4;">0</div>
+            <div class="donut-label">Critical CVE</div>
+          </div>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-bottom: 1rem;">
+          Trivy image vulnerability scans and Gitleaks secrets audit confirmed clean.
+        </p>
+
+        <div class="scorecard-legend">
+          <span class="legend-item"><span class="legend-box" style="background:#06b6d4;"></span> Hardened (Pass)</span>
+          <span class="legend-item"><span class="legend-box" style="background:#f59e0b;"></span> Minor Warnings</span>
         </div>
       </div>
     </div>
@@ -911,7 +1763,7 @@ footer {
           </tr>
         </thead>
         <tbody id="readiness-checklist-table">
-          <tr><td colspan="4" style="text-align: center; color: var(--text-dim);">Loading safety checklist...</td></tr>
+          <tr><td colspan="4" style="text-align: center; color: var(--text-dim); padding: 1.5rem;">Loading safety checklist...</td></tr>
         </tbody>
       </table>
     </div>
@@ -919,6 +1771,7 @@ footer {
 
   <!-- TAB 5: ENV VALIDATOR -->
   <div id="tab-env" class="tab-content">
+    <button class="btn-back-to-dash" onclick="switchTab('overview')">← Back to Dashboard</button>
     <div class="section-header">
       <div>
         <div class="section-title">Environment Variable Validator</div>
@@ -956,6 +1809,7 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
 
   <!-- TAB 6: MONITORING -->
   <div id="tab-monitoring" class="tab-content">
+    <button class="btn-back-to-dash" onclick="switchTab('overview')">← Back to Dashboard</button>
     <div class="section-header">
       <div>
         <div class="section-title">Health Monitoring & Live Probes</div>
@@ -965,7 +1819,7 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
     </div>
 
     <div class="grid-stats">
-      <div class="stat-card">
+      <div class="stat-card card-cyan">
         <div class="stat-header">
           <span class="stat-label">Process Uptime</span>
           <div class="stat-icon">🕒</div>
@@ -974,7 +1828,7 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
         <div class="stat-subtext">Current process instance</div>
       </div>
 
-      <div class="stat-card">
+      <div class="stat-card card-purple">
         <div class="stat-header">
           <span class="stat-label">Requests Served</span>
           <div class="stat-icon">📊</div>
@@ -983,7 +1837,7 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
         <div class="stat-subtext">Total HTTP requests handled</div>
       </div>
 
-      <div class="stat-card">
+      <div class="stat-card card-green">
         <div class="stat-header">
           <span class="stat-label">Latest Latency</span>
           <div class="stat-icon">⚡</div>
@@ -1010,20 +1864,86 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
           </tr>
         </thead>
         <tbody id="health-history-table">
-          <tr><td colspan="5" style="text-align: center; color: var(--text-dim);">Loading probe records...</td></tr>
+          <tr><td colspan="5" style="text-align: center; color: var(--text-dim); padding: 1.5rem;">Loading probe records...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- TAB 7: SECURITY -->
-  <!-- TAB: SECURITY CENTER -->
+  <!-- TAB 7: SECURITY CENTER (Reference: Moole.ai) -->
   <div id="tab-security" class="tab-content">
+    <button class="btn-back-to-dash" onclick="switchTab('overview')">← Back to Dashboard</button>
     <div class="section-header">
       <div>
         <div class="section-title">Security & Supply Chain Center</div>
-        <div class="section-subtitle">Real-time image vulnerability scans, secrets audits, and supply chain telemetry from CI/CD pipeline runs</div>
+        <div class="section-subtitle">Vulnerability audits (Trivy), secret scans (Gitleaks), and immutable container verification</div>
       </div>
+    </div>
+
+    <!-- Moole.ai Severity Summary Cards -->
+    <div class="moole-summary-banner">
+      <div class="moole-sev-card">
+        <div class="moole-sev-icon sev-crit-icon">🚨</div>
+        <div>
+          <div class="moole-sev-title">Critical</div>
+          <div class="moole-sev-count" style="color: #f87171;">0</div>
+        </div>
+      </div>
+      <div class="moole-sev-card">
+        <div class="moole-sev-icon sev-high-icon">⚠️</div>
+        <div>
+          <div class="moole-sev-title">High</div>
+          <div class="moole-sev-count" style="color: #fbbf24;">2</div>
+        </div>
+      </div>
+      <div class="moole-sev-card">
+        <div class="moole-sev-icon sev-med-icon">🛡️</div>
+        <div>
+          <div class="moole-sev-title">Medium</div>
+          <div class="moole-sev-count" style="color: #34d399;">5</div>
+        </div>
+      </div>
+      <div class="moole-sev-card">
+        <div class="moole-sev-icon sev-low-icon">ℹ️</div>
+        <div>
+          <div class="moole-sev-title">Low</div>
+          <div class="moole-sev-count" style="color: #60a5fa;">8</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">Repository Security Audit</div>
+      <div class="section-subtitle">Static code & container analysis results</div>
+    </div>
+
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Repository</th>
+            <th>Critical</th>
+            <th>High</th>
+            <th>Medium</th>
+            <th>Low</th>
+            <th>Build Engine</th>
+            <th>Integration</th>
+            <th>Last Scan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight: 700;">harshit5afk/deployeasy</td>
+            <td><span style="color: #34d399; font-weight: 700;">0</span></td>
+            <td><span style="color: #fbbf24; font-weight: 700;">2</span></td>
+            <td><span style="color: #60a5fa; font-weight: 700;">5</span></td>
+            <td><span style="color: var(--text-dim); font-weight: 700;">8</span></td>
+            <td><span class="code-sha">Dockerfile</span></td>
+            <td><span class="badge-status badge-success">GitHub Actions</span></td>
+            <td>Just now</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <div id="security-scans-container" class="security-grid">
@@ -1031,8 +1951,9 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
     </div>
   </div>
 
-  <!-- TAB: COSTS & FINOPS -->
+  <!-- TAB 8: COSTS & FINOPS (Reference: Cloudinfix) -->
   <div id="tab-costs" class="tab-content">
+    <button class="btn-back-to-dash" onclick="switchTab('overview')">← Back to Dashboard</button>
     <div class="section-header">
       <div>
         <div class="section-title">Cloud Infrastructure & CI/CD Cost Center</div>
@@ -1041,41 +1962,30 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
       <button class="btn-sm-primary" onclick="loadCostEstimator()">⚡ Refresh Cost Breakdown</button>
     </div>
 
-    <div class="grid-stats">
-      <div class="stat-card">
-        <div class="stat-header">
-          <span class="stat-label">Projected Monthly Spend</span>
-          <div class="stat-icon">💰</div>
-        </div>
-        <div class="stat-value" id="cost-monthly-spend">$0.00</div>
-        <div class="stat-subtext" id="cost-tier-subtext">Render Free Tier & GitHub Free Tier</div>
+    <!-- Cloudinfix 4 Top Metric Cards -->
+    <div class="cloudinfix-grid">
+      <div class="finops-card fin-blue">
+        <div class="finops-label">Monthly Spend</div>
+        <div class="finops-value" id="cost-monthly-spend">$0.00</div>
+        <div class="finops-subtext" id="cost-tier-subtext">Render Free Tier & GitHub Free Tier</div>
       </div>
 
-      <div class="stat-card">
-        <div class="stat-header">
-          <span class="stat-label">CI/CD Runner Minutes</span>
-          <div class="stat-icon">⏱️</div>
-        </div>
-        <div class="stat-value" id="cost-runner-mins">0 min</div>
-        <div class="stat-subtext" id="cost-runner-quota">of 2,000 monthly free tier allowance</div>
+      <div class="finops-card fin-cyan">
+        <div class="finops-label">Forecasting</div>
+        <div class="finops-value">$0.00</div>
+        <div class="finops-subtext">Budget Limit: $25.00 / mo (100% Free)</div>
       </div>
 
-      <div class="stat-card">
-        <div class="stat-header">
-          <span class="stat-label">Container Storage (GHCR)</span>
-          <div class="stat-icon">💾</div>
-        </div>
-        <div class="stat-value" id="cost-storage-gb">0.0 GB</div>
-        <div class="stat-subtext" id="cost-storage-quota">of 5.0 GB free tier allowance</div>
+      <div class="finops-card fin-emerald">
+        <div class="finops-label">Runner Minutes</div>
+        <div class="finops-value" id="cost-runner-mins">0 min</div>
+        <div class="finops-subtext" id="cost-runner-quota">of 2,000 monthly free tier allowance</div>
       </div>
 
-      <div class="stat-card">
-        <div class="stat-header">
-          <span class="stat-label">FinOps Efficiency</span>
-          <div class="stat-icon">🎯</div>
-        </div>
-        <div class="stat-value" style="color: #34d399;">100%</div>
-        <div class="stat-subtext">Zero wasted cloud compute detected</div>
+      <div class="finops-card fin-amber">
+        <div class="finops-label">Container Storage</div>
+        <div class="finops-value" id="cost-storage-gb">0.0 GB</div>
+        <div class="finops-subtext" id="cost-storage-quota">of 5.0 GB free tier allowance</div>
       </div>
     </div>
 
@@ -1096,7 +2006,7 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
           </tr>
         </thead>
         <tbody id="cost-breakdown-table">
-          <tr><td colspan="5" style="text-align: center; color: var(--text-dim);">Loading cost metrics...</td></tr>
+          <tr><td colspan="5" style="text-align: center; color: var(--text-dim); padding: 1.5rem;">Loading cost metrics...</td></tr>
         </tbody>
       </table>
     </div>
@@ -1113,12 +2023,29 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
     </div>
   </div>
 
-  <!-- TAB: WEBHOOKS & NOTIFICATIONS -->
+  <!-- TAB 9: WEBHOOKS & NOTIFICATIONS (Reference: Splunk) -->
   <div id="tab-webhooks" class="tab-content">
+    <button class="btn-back-to-dash" onclick="switchTab('overview')">← Back to Dashboard</button>
     <div class="section-header">
       <div>
         <div class="section-title">Notification & Webhook Integrations</div>
         <div class="section-subtitle">Dispatch instant deployment alerts, health probes, and rollback events to Discord and Slack</div>
+      </div>
+    </div>
+
+    <!-- Splunk-Style Incident Alert Banner -->
+    <div class="splunk-incident-banner">
+      <div>
+        <div class="splunk-badges">
+          <span class="badge-status badge-success">FASTAPI SERVICE</span>
+          <span class="badge-status badge-success">ZERO 500 ERRORS</span>
+          <span class="badge-status badge-rolled">SYSTEM STABLE</span>
+        </div>
+        <div class="splunk-title">Production Health & Incident Monitoring</div>
+        <div class="splunk-meta">Live probe active: Target responds with 200 OK across all synthetic health checks.</div>
+      </div>
+      <div>
+        <button class="btn-sm-primary" onclick="triggerHealthProbe()">⚡ Run Probe Now</button>
       </div>
     </div>
 
@@ -1185,8 +2112,9 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
     </div>
   </div>
 
-  <!-- TAB 8: API CONSOLE -->
+  <!-- TAB 10: API CONSOLE -->
   <div id="tab-console" class="tab-content">
+    <button class="btn-back-to-dash" onclick="switchTab('overview')">← Back to Dashboard</button>
     <div class="section-header">
       <div>
         <div class="section-title">Live API Testing Console</div>
@@ -1339,7 +2267,7 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
       </div>
       <div style="font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem;" id="diag-summary-text">Summary</div>
       <div style="background: rgba(0,0,0,0.5); padding: 0.75rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.8rem; color: #f87171; margin-bottom: 1rem; max-height: 120px; overflow-y: auto;" id="diag-root-cause">Root cause</div>
-      <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); padding: 0.85rem; border-radius: 8px; font-size: 0.85rem;">
+      <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 0.85rem; border-radius: 8px; font-size: 0.85rem;">
         <span style="font-weight: 700; color: #c4b5fd;">Actionable Recommendation:</span>
         <p style="margin-top: 0.25rem; color: var(--text-main);" id="diag-fix-text">Fix</p>
       </div>
@@ -1445,7 +2373,9 @@ let pendingRollbackSha = null;
 
 function selectProject(id) {
   selectedProjectId = id;
-  refreshAllData();
+  loadSystemMode();
+loadCurrentUser();
+refreshAllData();
 }
 
 // Remove legacy tokens if present
@@ -1463,6 +2393,144 @@ function getAuthHeaders(extraHeaders = {}) {
   return h;
 }
 
+
+
+let currentSystemMode = localStorage.getItem('deployeasy_system_mode') || 'demo';
+
+const SYSTEM_MODES_DEF = {
+  demo: {
+    name: 'Demo Sandbox',
+    icon: '⚡',
+    badgeClass: 'mode-demo',
+    color: '#fbbf24',
+    title: 'LIVE DEMO SANDBOX',
+    desc: 'Interactive dummy environment pre-loaded with sample fleet, deployment history, and live telemetry.'
+  },
+  sandbox: {
+    name: 'Demo Sandbox',
+    icon: '⚡',
+    badgeClass: 'mode-demo',
+    color: '#fbbf24',
+    title: 'LIVE DEMO SANDBOX',
+    desc: 'Interactive dummy environment pre-loaded with sample fleet, deployment history, and live telemetry.'
+  },
+  test: {
+    name: 'Demo Sandbox',
+    icon: '⚡',
+    badgeClass: 'mode-demo',
+    color: '#fbbf24',
+    title: 'LIVE DEMO SANDBOX',
+    desc: 'Interactive dummy environment pre-loaded with sample fleet, deployment history, and live telemetry.'
+  }
+};
+
+function toggleModeMenu(e) {
+  if (e) e.stopPropagation();
+  const m = $('mode-dropdown-menu');
+  if (m) m.classList.toggle('open');
+}
+
+document.addEventListener('click', () => {
+  const m = $('mode-dropdown-menu');
+  if (m) m.classList.remove('open');
+});
+
+async function switchSystemMode(newMode) {
+  if (!SYSTEM_MODES_DEF[newMode]) return;
+  currentSystemMode = newMode;
+  localStorage.setItem('deployeasy_system_mode', newMode);
+  applySystemModeUI(newMode);
+  
+  try {
+    await fetch('/api/system/mode', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      credentials: 'same-origin',
+      body: JSON.stringify({ mode: newMode })
+    });
+  } catch(err) {
+    console.debug('Mode sync notice', err);
+  }
+}
+
+function applySystemModeUI(modeKey) {
+  const def = SYSTEM_MODES_DEF[modeKey] || SYSTEM_MODES_DEF.demo;
+  
+  const btn = $('mode-selector-btn');
+  if (btn) {
+    btn.className = `btn-mode-pill ${def.badgeClass}`;
+    $('mode-label').textContent = `${def.icon} ${def.name}`;
+  }
+
+  document.querySelectorAll('.mode-item').forEach(el => el.classList.remove('active'));
+  const activeOpt = $(`mode-opt-${modeKey}`);
+  if (activeOpt) activeOpt.classList.add('active');
+
+  const banner = $('env-mode-banner');
+  if (banner) {
+    banner.className = `env-banner ${def.badgeClass}`;
+    $('banner-mode-icon').textContent = def.icon;
+    $('banner-mode-title').textContent = def.title;
+    $('banner-mode-desc').textContent = def.desc;
+  }
+
+  document.querySelectorAll('.btn-mode-switch').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-mode') === modeKey);
+  });
+}
+
+async function loadSystemMode() {
+  try {
+    const res = await fetch('/api/system/mode', { credentials: 'same-origin' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.current_mode && SYSTEM_MODES_DEF[data.current_mode]) {
+        currentSystemMode = localStorage.getItem('deployeasy_system_mode') || data.current_mode;
+      }
+    }
+  } catch(e) {}
+  applySystemModeUI(currentSystemMode);
+}
+
+async function loadCurrentUser() {
+  try {
+    const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+    if (res.ok) {
+      const u = await res.json();
+      const displayName = u.username || u.email || 'developer';
+      const nameEl = $('nav-user-name');
+      const avEl = $('nav-user-avatar');
+      if (nameEl) nameEl.textContent = displayName;
+      if (avEl) avEl.textContent = displayName.charAt(0).toUpperCase();
+    }
+  } catch(e) {
+    console.debug('User profile fetch notice', e);
+  }
+}
+
+async function logoutUser() {
+  if (!confirm('Log out of DeployEasy?')) return;
+  try {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      credentials: 'same-origin'
+    });
+  } catch (err) {
+    console.warn('Logout network error:', err);
+  }
+  localStorage.removeItem('deployeasy_user');
+  localStorage.removeItem('deployeasy_token');
+  window.location.href = '/login';
+}
+
+function scrollTabs(direction) {
+  const tabs = $('main-nav-tabs');
+  if (tabs) {
+    tabs.scrollBy({ left: direction * 180, behavior: 'smooth' });
+  }
+}
+
 function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
@@ -1470,13 +2538,31 @@ function switchTab(tabId) {
   const targetTab = $('tab-' + tabId);
   if (targetTab) targetTab.classList.add('active');
 
-  const btn = Array.from(document.querySelectorAll('.nav-tab-btn')).find(b => b.textContent.toLowerCase().includes(tabId.split('-')[0]));
-  if (btn) btn.classList.add('active');
+  const btn = Array.from(document.querySelectorAll('.nav-tab-btn')).find(b => {
+    const fn = b.getAttribute('onclick') || '';
+    return fn.includes("'" + tabId + "'") || fn.includes('"' + tabId + '"');
+  });
+  if (btn) {
+    btn.classList.add('active');
+    btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
 
   if (tabId === 'readiness') loadReadinessScore();
   if (tabId === 'env') runEnvValidation();
   if (tabId === 'costs') loadCostEstimator();
   if (tabId === 'security') loadSecurityCenter();
+  if (tabId === 'monitoring') loadHealthHistory();
+}
+
+// Mouse wheel horizontal scroll on nav-tabs
+const navTabsContainer = $('main-nav-tabs');
+if (navTabsContainer) {
+  navTabsContainer.addEventListener('wheel', (e) => {
+    if (e.deltaY !== 0) {
+      e.preventDefault();
+      navTabsContainer.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
 }
 
 function openModal(id) { $(id).classList.add('open'); }
@@ -1552,7 +2638,9 @@ async function executeRollback() {
     });
     if (res.ok) {
       alert('✓ Rollback initiated successfully! Target commit ' + pendingRollbackSha.slice(0, 7) + ' is now deploying.');
-      refreshAllData();
+      loadSystemMode();
+loadCurrentUser();
+refreshAllData();
     } else {
       const err = await res.json();
       alert('Rollback failed: ' + (err.detail || 'Unknown error'));
@@ -1580,7 +2668,9 @@ async function handleCreateProject(e) {
       selectedProjectId = created.id;
       closeModal('modal-add-project');
       alert('✓ Project connected successfully!');
-      refreshAllData();
+      loadSystemMode();
+loadCurrentUser();
+refreshAllData();
     } else {
       const err = await res.json();
       alert('Error: ' + (err.detail || 'Could not connect project'));
@@ -1609,7 +2699,9 @@ async function handleTriggerDeploy(e) {
     if (res.ok) {
       closeModal('modal-trigger-deploy');
       alert('✓ Deployment triggered to production!');
-      refreshAllData();
+      loadSystemMode();
+loadCurrentUser();
+refreshAllData();
     } else {
       const err = await res.json();
       alert('Deploy failed: ' + (err.detail || 'Could not trigger deploy'));
@@ -1679,7 +2771,7 @@ async function loadReadinessScore() {
 }
 
 async function runEnvValidation() {
-  const lines = $('env-input-box').value.split('\n');
+  const lines = $('env-input-box').value.split(/\r?\n/);
   const dict = {};
   lines.forEach(l => {
     const trimmed = l.trim();
@@ -1986,15 +3078,15 @@ async function refreshAllData() {
       const renderRow = d => `
         <tr>
           <td><span class="code-sha">${esc(d.commit_sha.slice(0, 7))}</span></td>
-          <td style="max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(d.commit_message)}</td>
-          <td><span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim);">${esc(d.trigger_type)}</span></td>
+          <td style="max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600;">${esc(d.commit_message)}</td>
+          <td><span style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-dim);">${esc(d.trigger_type)}</span></td>
           <td>
             <span class="badge-status badge-${d.status === 'success' ? 'success' : (d.status === 'rolled_back' ? 'rolled' : 'danger')}">
               ${esc(d.status)}
             </span>
           </td>
-          <td>${d.duration_seconds}s</td>
-          <td>${new Date(d.created_at).toLocaleTimeString()}</td>
+          <td style="font-family: var(--font-mono);">${d.duration_seconds}s</td>
+          <td style="color: var(--text-dim); font-size: 0.82rem;">${new Date(d.created_at).toLocaleTimeString()}</td>
           <td style="white-space: nowrap;">
             <button class="btn-action-sm" onclick="viewDeploymentDiff(${d.id})">Diff</button>
             <button class="btn-action-sm" onclick="analyzeDeploymentById(${d.id})">Analyze</button>
@@ -2006,8 +3098,8 @@ async function refreshAllData() {
       $('overview-deployments-table').innerHTML = recent.slice(0, 5).map(renderRow).join('');
       $('deployments-full-table').innerHTML = recent.map(renderRow).join('');
     } else {
-      $('overview-deployments-table').innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No deployments recorded yet. Connect a project to start deploying.</td></tr>';
-      $('deployments-full-table').innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No deployments recorded yet.</td></tr>';
+      $('overview-deployments-table').innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No deployments recorded yet. Connect a project to start deploying.</td></tr>';
+      $('deployments-full-table').innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No deployments recorded yet.</td></tr>';
     }
 
     const projs = overview.projects || [];
@@ -2016,7 +3108,7 @@ async function refreshAllData() {
         selectedProjectId = projs[0].id;
       }
       $('projects-table').innerHTML = projs.map(p => `
-        <tr style="${p.id === selectedProjectId ? 'background: rgba(139, 92, 246, 0.08);' : ''}">
+        <tr style="${p.id === selectedProjectId ? 'background: rgba(99, 102, 241, 0.08);' : ''}">
           <td style="font-weight: 700;">${esc(p.name)}</td>
           <td><a href="https://github.com/${esc(p.repo_name)}" target="_blank" style="color: var(--primary); text-decoration: none;">${esc(p.repo_name)}</a></td>
           <td><span class="code-sha">${esc(p.branch)}</span></td>
@@ -2039,6 +3131,8 @@ async function refreshAllData() {
   } catch(e) { console.error('Data refresh error:', e); }
 }
 
+loadSystemMode();
+loadCurrentUser();
 refreshAllData();
 setInterval(refreshAllData, 5000);
 probeEndpoint('/api/overview');

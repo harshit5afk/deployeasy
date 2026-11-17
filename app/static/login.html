@@ -274,7 +274,10 @@ footer {
     </div>
     <span class="brand-text">Deploy<span>Easy</span></span>
   </a>
-  <a href="/" class="back-link">← Back to Overview</a>
+  <div style="display:flex;align-items:center;gap:1.25rem;">
+    <a href="/" class="back-link">Home</a>
+    <a href="/dashboard" class="back-link" style="color:#c7d2fe;font-weight:600;">← Back to Dashboard</a>
+  </div>
 </header>
 
 <div class="auth-wrapper">
@@ -374,6 +377,28 @@ async function handleEmailAuth(e) {
     alert('Network error: ' + err.message);
   }
 }
+
+// Check if user is already authenticated
+fetch('/api/auth/me', { credentials: 'same-origin' })
+  .then(r => r.ok ? r.json() : null)
+  .then(user => {
+    if (user) {
+      const card = document.querySelector('.auth-card');
+      if (card) {
+        const box = document.createElement('div');
+        box.style = "background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35);border-radius:10px;padding:0.85rem;margin-bottom:1.25rem;text-align:left;font-size:0.85rem;color:#e0e7ff;";
+        box.innerHTML = `Active session: <b>${user.username || user.email}</b> (${user.role})<div style="margin-top:0.6rem;display:flex;gap:0.6rem;"><a href="/dashboard" style="background:#6366f1;color:#fff;padding:0.35rem 0.8rem;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.82rem;">Go to Dashboard →</a><button onclick="handleLogout()" style="background:transparent;border:1px solid rgba(255,255,255,0.2);color:#fca5a5;padding:0.35rem 0.8rem;border-radius:6px;cursor:pointer;font-size:0.82rem;">Logout</button></div>`;
+        const title = card.querySelector('.auth-subtitle');
+        if (title) title.insertAdjacentElement('afterend', box);
+      }
+    }
+  });
+
+function handleLogout() {
+  fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
+    .then(() => window.location.reload());
+}
+
 </script>
 </body>
 </html>

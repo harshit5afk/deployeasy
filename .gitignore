@@ -5,3 +5,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.db
+node_modules/
+frontend/node_modules/
+app/static/dist/
+scratch/

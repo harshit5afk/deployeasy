@@ -508,3 +508,30 @@ def test_webhook_test_endpoint(mock_dispatch, auth_client, sample_project):
     assert data["platform"] == "discord"
     assert "sample_payload" in data
     assert "embeds" in data["sample_payload"]
+
+
+def test_system_mode_endpoints(auth_client):
+    r_get = auth_client.get("/api/system/mode")
+    assert r_get.status_code == 200
+    data = r_get.json()
+    assert "current_mode" in data
+    assert "available_modes" in data
+    mode_ids = [m["id"] for m in data["available_modes"]]
+    assert "demo" in mode_ids
+    assert "sandbox" in mode_ids
+    assert "test" in mode_ids
+
+    # Switch to sandbox mode
+    r_set = auth_client.post("/api/system/mode", json={"mode": "sandbox"})
+    assert r_set.status_code == 200
+    assert r_set.json()["current_mode"] == "sandbox"
+
+    # Switch to test mode
+    r_test = auth_client.post("/api/system/mode", json={"mode": "test"})
+    assert r_test.status_code == 200
+    assert r_test.json()["current_mode"] == "test"
+
+    # Invalid mode rejection
+    r_inv = auth_client.post("/api/system/mode", json={"mode": "invalid_mode"})
+    assert r_inv.status_code == 422
+

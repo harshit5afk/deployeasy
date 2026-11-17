@@ -14,7 +14,8 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from . import config
@@ -39,6 +40,7 @@ from .db import (
     UserSession,
     get_db,
     init_db,
+    seed_demo_fixtures,
 )
 from .env_validator import validate_environment
 from .github_client import (
@@ -72,6 +74,8 @@ from .schemas import (
     ReadinessResponse,
     RollbackRequest,
     SecurityScanResponse,
+    SystemModeResponse,
+    SystemModeUpdateRequest,
     UserCreate,
     UserLogin,
     UserResponse,
@@ -194,6 +198,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount React built static assets if available
+dist_assets = STATIC / "dist" / "assets"
+if dist_assets.exists():
+    app.mount("/assets", StaticFiles(directory=str(dist_assets)), name="react-assets")
+
 
 @app.middleware("http")
 async def structured_logging(request: Request, call_next):
@@ -219,23 +228,67 @@ async def structured_logging(request: Request, call_next):
 # Base Core Endpoints & Frontend Views
 # -----------------------------------------------------------------------------
 
+def _serve_frontend_entry(fallback_filename: str):
+    react_entry = STATIC / "dist" / "index.html"
+    if react_entry.exists():
+        return FileResponse(react_entry)
+    return FileResponse(STATIC / fallback_filename)
+
+
 @app.get("/")
 def root(request: Request):
     accept = request.headers.get("accept", "")
     if "text/html" in accept and not accept.startswith("*/*"):
-        return FileResponse(STATIC / "landing.html")
+        return _serve_frontend_entry("landing.html")
     return {"message": "Welcome to DeployEasy"}
 
 
 @app.get("/login")
 @app.get("/signup")
+@app.get("/register")
 def auth_page():
-    return FileResponse(STATIC / "login.html")
+    return _serve_frontend_entry("login.html")
 
 
 @app.get("/dashboard")
 def dashboard():
-    return FileResponse(STATIC / "index.html")
+    return _serve_frontend_entry("index.html")
+
+
+@app.get("/demo")
+def launch_demo_mode(db: DbSession):
+    """Launch interactive Demo Mode in a separate session with rich dummy data."""
+    seed_demo_fixtures(db)
+    demo_user = db.query(User).filter(User.username == "demo-developer").first()
+    session = create_user_session(db, demo_user)
+    redirect = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    set_session_cookies(redirect, session)
+    redirect.set_cookie("deployeasy_mode", "demo", httponly=False, samesite="lax", secure=config.COOKIE_SECURE)
+    return redirect
+
+
+@app.get("/sandbox")
+def launch_sandbox_mode(db: DbSession):
+    """Launch isolated Sandbox Mode in a separate session with dry-run capabilities."""
+    seed_demo_fixtures(db)
+    demo_user = db.query(User).filter(User.username == "demo-developer").first()
+    session = create_user_session(db, demo_user)
+    redirect = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    set_session_cookies(redirect, session)
+    redirect.set_cookie("deployeasy_mode", "sandbox", httponly=False, samesite="lax", secure=config.COOKIE_SECURE)
+    return redirect
+
+
+@app.get("/test-mode")
+def launch_test_mode(db: DbSession):
+    """Launch automated Test Lab Mode in a separate session with synthetic diagnostics."""
+    seed_demo_fixtures(db)
+    demo_user = db.query(User).filter(User.username == "demo-developer").first()
+    session = create_user_session(db, demo_user)
+    redirect = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    set_session_cookies(redirect, session)
+    redirect.set_cookie("deployeasy_mode", "test", httponly=False, samesite="lax", secure=config.COOKIE_SECURE)
+    return redirect
 
 
 @app.get("/health")
@@ -254,6 +307,67 @@ def metrics():
         "process_uptime_seconds": round(time.time() - START_TIME, 1),
         "requests_since_process_start": requests_served,
     }
+
+
+# -----------------------------------------------------------------------------
+# System Environment Modes (Demo, Sandbox, Test)
+# -----------------------------------------------------------------------------
+
+AVAILABLE_SYSTEM_MODES = [
+    {
+        "id": "demo",
+        "name": "Demo Mode",
+        "icon": "⚡",
+        "color": "#f59e0b",
+        "description": "Guided read-only simulation with sample cloud fleet & zero live mutations.",
+    },
+    {
+        "id": "sandbox",
+        "name": "Sandbox Mode",
+        "icon": "🛡️",
+        "color": "#06b6d4",
+        "description": "Isolated staging environment with dry-run deployments & synthetic webhooks.",
+    },
+    {
+        "id": "test",
+        "name": "Test Mode",
+        "icon": "🧪",
+        "color": "#10b981",
+        "description": "Automated CI test runner, smoke probe simulation & error scenario injection.",
+    },
+]
+
+_CURRENT_SYSTEM_MODE = "demo" if config.DEPLOYEASY_DEMO_MODE else "sandbox"
+
+
+@app.get("/api/system/mode", response_model=SystemModeResponse)
+def get_system_mode(request: Request):
+    """Retrieve active system mode and supported modes."""
+    mode_cookie = request.cookies.get("deployeasy_mode")
+    active_mode = mode_cookie if mode_cookie in ("demo", "sandbox", "test") else _CURRENT_SYSTEM_MODE
+    return SystemModeResponse(
+        current_mode=active_mode,
+        available_modes=AVAILABLE_SYSTEM_MODES,
+    )
+
+
+@app.post("/api/system/mode", response_model=SystemModeResponse)
+def set_system_mode(payload: SystemModeUpdateRequest, response: Response):
+    """Switch active platform environment mode (demo, sandbox, test)."""
+    global _CURRENT_SYSTEM_MODE
+    _CURRENT_SYSTEM_MODE = payload.mode
+    response.set_cookie(
+        key="deployeasy_mode",
+        value=payload.mode,
+        httponly=False,
+        samesite="lax",
+        secure=config.COOKIE_SECURE,
+    )
+    return SystemModeResponse(
+        current_mode=_CURRENT_SYSTEM_MODE,
+        available_modes=AVAILABLE_SYSTEM_MODES,
+    )
+
 
 
 # -----------------------------------------------------------------------------
@@ -313,6 +427,7 @@ def login_user(payload: UserLogin, request: Request, response: Response, db: DbS
 def demo_login(request: Request, response: Response, db: DbSession):
     """Create a secured demo session with read-only sandbox permissions."""
     check_auth_rate_limit(request)
+    seed_demo_fixtures(db)
     demo_user = db.query(User).filter(User.username == "demo-developer").first()
     if not demo_user:
         demo_user = User(
@@ -867,6 +982,11 @@ def get_system_overview(db: DbSession, user: CurrentUser):
         all_deployments = db.query(Deployment).all()
     else:
         projects = db.query(Project).filter(Project.owner_id == user.id).all()
+        if not projects and user.role == "demo":
+            seed_demo_fixtures(db)
+            demo_user = db.query(User).filter(User.username == "demo-developer").first()
+            if demo_user:
+                projects = db.query(Project).filter(Project.owner_id == demo_user.id).all()
         project_ids = [p.id for p in projects]
         all_deployments = db.query(Deployment).filter(Deployment.project_id.in_(project_ids)).all() if project_ids else []
 
