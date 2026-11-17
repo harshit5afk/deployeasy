@@ -1,5 +1,7 @@
 """DeployEasy: Production Cloud CI/CD & Deployment Platform."""
 import asyncio
+import hashlib
+import hmac
 import json
 import logging
 import os
@@ -9,13 +11,15 @@ import urllib.parse
 import urllib.request
 import uuid
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from . import config
@@ -26,6 +30,7 @@ from .auth import (
     get_authorized_project,
     get_current_user,
     hash_password,
+    hash_session_token,
     set_session_cookies,
     verify_csrf_protection,
     verify_password,
@@ -46,6 +51,7 @@ from .env_validator import validate_environment
 from .github_client import (
     GitHubIntegrationError,
     dispatch_github_workflow,
+    inspect_github_repository,
     verify_live_version,
 )
 from .incident_generator import generate_incident_report
@@ -64,6 +70,7 @@ from .schemas import (
     EnvValidationRequest,
     EnvValidationResponse,
     HealthCheckResponse,
+    GitHubRepositoryRequest,
     IncidentReportRequest,
     IncidentReportResponse,
     LogAnalysisRequest,
@@ -337,14 +344,14 @@ AVAILABLE_SYSTEM_MODES = [
     },
 ]
 
-_CURRENT_SYSTEM_MODE = "demo" if config.DEPLOYEASY_DEMO_MODE else "sandbox"
+_DEFAULT_SYSTEM_MODE = "demo" if config.DEPLOYEASY_DEMO_MODE else "sandbox"
 
 
 @app.get("/api/system/mode", response_model=SystemModeResponse)
 def get_system_mode(request: Request):
     """Retrieve active system mode and supported modes."""
     mode_cookie = request.cookies.get("deployeasy_mode")
-    active_mode = mode_cookie if mode_cookie in ("demo", "sandbox", "test") else _CURRENT_SYSTEM_MODE
+    active_mode = mode_cookie if mode_cookie in ("demo", "sandbox", "test") else _DEFAULT_SYSTEM_MODE
     return SystemModeResponse(
         current_mode=active_mode,
         available_modes=AVAILABLE_SYSTEM_MODES,
@@ -352,10 +359,8 @@ def get_system_mode(request: Request):
 
 
 @app.post("/api/system/mode", response_model=SystemModeResponse)
-def set_system_mode(payload: SystemModeUpdateRequest, response: Response):
-    """Switch active platform environment mode (demo, sandbox, test)."""
-    global _CURRENT_SYSTEM_MODE
-    _CURRENT_SYSTEM_MODE = payload.mode
+def set_system_mode(payload: SystemModeUpdateRequest, response: Response, csrf: CsrfProtect = None):
+    """Set a browser-local display mode (never a security or deployment boundary)."""
     response.set_cookie(
         key="deployeasy_mode",
         value=payload.mode,
@@ -364,7 +369,7 @@ def set_system_mode(payload: SystemModeUpdateRequest, response: Response):
         secure=config.COOKIE_SECURE,
     )
     return SystemModeResponse(
-        current_mode=_CURRENT_SYSTEM_MODE,
+        current_mode=payload.mode,
         available_modes=AVAILABLE_SYSTEM_MODES,
     )
 
@@ -398,7 +403,7 @@ def register_user(payload: UserCreate, request: Request, response: Response, db:
     set_session_cookies(response, session)
 
     return AuthTokenResponse(
-        token=session.session_token,
+        token=getattr(session, "raw_token", session.session_token),
         csrf_token=session.csrf_token,
         user=user,
     )
@@ -417,7 +422,7 @@ def login_user(payload: UserLogin, request: Request, response: Response, db: DbS
     set_session_cookies(response, session)
 
     return AuthTokenResponse(
-        token=session.session_token,
+        token=getattr(session, "raw_token", session.session_token),
         csrf_token=session.csrf_token,
         user=user,
     )
@@ -445,7 +450,7 @@ def demo_login(request: Request, response: Response, db: DbSession):
     set_session_cookies(response, session)
 
     return AuthTokenResponse(
-        token=session.session_token,
+        token=getattr(session, "raw_token", session.session_token),
         csrf_token=session.csrf_token,
         user=demo_user,
     )
@@ -458,8 +463,9 @@ def current_user_identity(user: CurrentUser):
 
 
 @app.post("/api/auth/logout")
-def logout_user(request: Request, response: Response, db: DbSession, csrf: CsrfProtect = None):
-    """Invalidate session in database and clear authentication cookies."""
+@app.get("/api/auth/logout")
+def logout_user(request: Request, response: Response, db: DbSession):
+    """Invalidate session in database and clear authentication cookies unconditionally."""
     token = request.cookies.get("deployeasy_session")
     if not token:
         auth_header = request.headers.get("Authorization")
@@ -468,11 +474,32 @@ def logout_user(request: Request, response: Response, db: DbSession, csrf: CsrfP
             token = parts[-1]
 
     if token:
-        db.query(UserSession).filter(UserSession.session_token == token).delete()
-        db.commit()
+        token_hash = hash_session_token(token)
+        try:
+            db.query(UserSession).filter(
+                (UserSession.session_token == token_hash) | (UserSession.session_token == token)
+            ).delete()
+            db.commit()
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Session cleanup error on logout: %s", exc)
 
     clear_session_cookies(response)
+    response.delete_cookie("deployeasy_session", path="/")
+    response.delete_cookie("deployeasy_csrf", path="/")
+    response.delete_cookie("deployeasy_mode", path="/")
     return {"status": "logged_out", "message": "Session invalidated"}
+
+
+@app.get("/logout")
+def direct_logout(request: Request, response: Response, db: DbSession):
+    """Direct URL logout: clears all cookies and redirects to landing page."""
+    logout_user(request, response, db)
+    redirect = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    clear_session_cookies(redirect)
+    redirect.delete_cookie("deployeasy_session", path="/")
+    redirect.delete_cookie("deployeasy_csrf", path="/")
+    redirect.delete_cookie("deployeasy_mode", path="/")
+    return redirect
 
 
 # -----------------------------------------------------------------------------
@@ -509,6 +536,21 @@ def pipeline_runs():
 # -----------------------------------------------------------------------------
 # Projects API (Owner-Scoped Authorization & SSRF Validation)
 # -----------------------------------------------------------------------------
+
+@app.post("/api/github/repository-check")
+def check_github_repository(payload: GitHubRepositoryRequest, user: CurrentUser):
+    """Check the submitted repository URL against GitHub using configured server credentials."""
+    parsed = urllib.parse.urlparse(payload.repo_url if "://" in payload.repo_url else f"https://{payload.repo_url}")
+    if parsed.scheme != "https" or parsed.hostname not in {"github.com", "www.github.com"}:
+        raise HTTPException(status_code=400, detail="Enter a valid https://github.com/owner/repo URL.")
+    parts = [part for part in parsed.path.strip("/").split("/") if part]
+    if len(parts) != 2:
+        raise HTTPException(status_code=400, detail="URL must point directly to a GitHub repository.")
+    repo_name = parts[1][:-4] if parts[1].endswith(".git") else parts[1]
+    try:
+        return inspect_github_repository(f"{parts[0]}/{repo_name}")
+    except GitHubIntegrationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 @app.get("/api/projects", response_model=list[ProjectResponse])
 def list_projects(user: CurrentUser, db: DbSession):
@@ -607,44 +649,91 @@ def get_deployment_diff(deployment_id: int, user: CurrentUser, db: DbSession):
     }
 
 
+def evaluate_project_readiness(project: Project) -> dict[str, Any]:
+    """Evaluate pre-deploy readiness using the latest security scans and verified rollback artifacts."""
+    latest_scans_by_type: dict[str, Any] = {}
+    for scan in sorted(project.security_scans, key=lambda s: s.scanned_at or datetime.min, reverse=True):
+        if scan.scan_type not in latest_scans_by_type:
+            latest_scans_by_type[scan.scan_type] = scan
+
+    critical_cves = 0
+    high_cves = 0
+    secrets_found = False
+    vulnerability_scan_available = "trivy" in latest_scans_by_type
+    secrets_scan_available = "gitleaks" in latest_scans_by_type
+    for scan in latest_scans_by_type.values():
+        if scan.scan_type == "trivy":
+            critical_cves += scan.critical_count
+            high_cves += scan.high_count
+        elif scan.scan_type == "gitleaks" and not scan.passed:
+            secrets_found = True
+
+    last_dep = project.deployments[0] if project.deployments else None
+    tests_ok = (last_dep is not None and last_dep.status in ("success", "rolled_back"))
+    successful_deps = [d for d in project.deployments if d.status in ("success", "rolled_back")]
+    rollback_ok = len(successful_deps) >= 1
+
+    res = calculate_readiness_score(
+        tests_passed=tests_ok,
+        critical_vulns=critical_cves,
+        high_vulns=high_cves,
+        secrets_detected=secrets_found,
+        vulnerability_scan_available=vulnerability_scan_available,
+        secrets_scan_available=secrets_scan_available,
+        health_status=project.status,
+        rollback_available=rollback_ok,
+    )
+    res["evaluated_target"] = last_dep.commit_sha if last_dep else "Initial Release"
+    res["evaluated_at"] = datetime.now(UTC).isoformat()
+    return res
+
+
 @app.post("/api/deployments/trigger", response_model=DeploymentResponse, status_code=201)
 def trigger_deployment(payload: DeploymentTriggerRequest, user: CurrentUser, db: DbSession, csrf: CsrfProtect = None):
     """Trigger manual release deployment. Enforces readiness gates and executes real workflow or hook."""
     project = get_authorized_project(payload.project_id, user, db, require_write=True)
 
+    if not config.GITHUB_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub integration is required for commit-specific releases. Configure GITHUB_TOKEN and the target repository workflow.",
+        )
+
+    if payload.force and user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can bypass deployment readiness gates.",
+        )
+
     # 1. Enforce Pre-Deploy Readiness Safety Gates (unless force=True with admin privileges)
     if not payload.force:
-        critical_cves = 0
-        high_cves = 0
-        secrets_found = False
-        for scan in project.security_scans:
-            if scan.scan_type == "trivy":
-                critical_cves += scan.critical_count
-                high_cves += scan.high_count
-            elif scan.scan_type == "gitleaks" and not scan.passed:
-                secrets_found = True
-
-        last_dep = project.deployments[0] if project.deployments else None
-        tests_ok = (last_dep is not None and last_dep.status in ("success", "rolled_back"))
-        rollback_ok = len(project.deployments) > 1
-
-        readiness = calculate_readiness_score(
-            tests_passed=tests_ok,
-            critical_vulns=critical_cves,
-            high_vulns=high_cves,
-            secrets_detected=secrets_found,
-            health_status=project.status,
-            rollback_available=rollback_ok,
-        )
+        readiness = evaluate_project_readiness(project)
         if readiness["deployment_blocked"]:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Deployment blocked by safety gates: {'; '.join(readiness['blocking_reasons'])}. Fix violations before promoting.",
             )
 
-    sha = payload.commit_sha
-    if len(sha) < 40:
-        sha = sha.ljust(40, "0")
+    sha = payload.commit_sha.strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Deployment requires the full 40-character lowercase hexadecimal commit SHA.",
+        )
+
+    dep = Deployment(
+        project_id=project.id,
+        commit_sha=sha,
+        commit_message=payload.commit_message,
+        branch=payload.branch,
+        trigger_type="manual",
+        status="queued",
+        duration_seconds=0,
+        logs_summary=f"Release queued for commit {sha[:7]} on branch {payload.branch}.",
+    )
+    db.add(dep)
+    db.commit()
+    db.refresh(dep)
 
     dep_status = "deploying"
     log_lines = [f"Release initiated for commit {sha[:7]}", f"Branch: {payload.branch}"]
@@ -656,28 +745,13 @@ def trigger_deployment(payload: DeploymentTriggerRequest, user: CurrentUser, db:
             dispatch_github_workflow(
                 repo_name=project.repo_name,
                 workflow_file="pipeline.yml",
-                inputs={"sha": sha},
+                inputs={"sha": sha, "deployment_id": str(dep.id)},
                 ref=payload.branch or "main",
             )
             log_lines.append("✓ GitHub Actions workflow_dispatch executed (pipeline.yml)")
             has_integration = True
         except GitHubIntegrationError as err:
             log_lines.append(f"⚠️ GitHub Actions dispatch error: {err}")
-            dep_status = "failure"
-
-    # 3. Real Integration Dispatch: Render Deploy Hook
-    if not has_integration and project.deploy_hook_url:
-        try:
-            with safe_urlopen(
-                project.deploy_hook_url,
-                data=b"",
-                headers={"User-Agent": "DeployEasy-Deployer/1.0"},
-                timeout=5.0,
-            ) as resp:
-                log_lines.append(f"✓ Render deploy hook notified (HTTP {resp.status})")
-                has_integration = True
-        except Exception as exc:  # noqa: BLE001
-            log_lines.append(f"⚠️ Render deploy hook notification error: {exc}")
             dep_status = "failure"
 
     # If no integration is configured, never report fake success!
@@ -687,17 +761,10 @@ def trigger_deployment(payload: DeploymentTriggerRequest, user: CurrentUser, db:
             detail="No deployment integration configured. Configure GITHUB_TOKEN or Render deploy hook for this project.",
         )
 
-    dep = Deployment(
-        project_id=project.id,
-        commit_sha=sha,
-        commit_message=payload.commit_message,
-        branch=payload.branch,
-        trigger_type="manual",
-        status=dep_status,
-        duration_seconds=0,
-        logs_summary="\n".join(log_lines),
-    )
-    db.add(dep)
+    db.refresh(dep)
+    if dep.status not in {"success", "failure", "rolled_back"}:
+        dep.status = dep_status
+    dep.logs_summary = (dep.logs_summary or "") + "\n" + "\n".join(log_lines)
     db.commit()
     db.refresh(dep)
     return dep
@@ -719,6 +786,19 @@ def rollback_deployment(payload: RollbackRequest, user: CurrentUser, db: DbSessi
             detail="Rollback requires the full 40-character lowercase hexadecimal commit SHA.",
         )
 
+    if not config.GITHUB_TOKEN:
+        raise HTTPException(status_code=400, detail="GitHub integration is required for verified SHA rollbacks. Configure GITHUB_TOKEN.")
+
+    rollback_dep = Deployment(
+        project_id=project.id, commit_sha=sha,
+        commit_message=f"Rollback to {sha[:7]}: {payload.reason}",
+        branch=project.branch, trigger_type="rollback", status="queued",
+        duration_seconds=0, logs_summary=f"Rollback queued to {sha}. Reason: {payload.reason}",
+    )
+    db.add(rollback_dep)
+    db.commit()
+    db.refresh(rollback_dep)
+
     log_lines = [
         f"Rollback initiated to target SHA {sha}",
         f"Reason: {payload.reason}",
@@ -732,7 +812,7 @@ def rollback_deployment(payload: RollbackRequest, user: CurrentUser, db: DbSessi
             dispatch_github_workflow(
                 repo_name=project.repo_name,
                 workflow_file="rollback.yml",
-                inputs={"sha": sha},
+                inputs={"sha": sha, "deployment_id": str(rollback_dep.id)},
                 ref=project.branch or "main",
             )
             log_lines.append(f"✓ GitHub Actions workflow_dispatch triggered (rollback.yml, sha={sha})")
@@ -741,26 +821,8 @@ def rollback_deployment(payload: RollbackRequest, user: CurrentUser, db: DbSessi
             log_lines.append(f"⚠️ GitHub rollback dispatch failed: {err}")
             rollback_status = "failure"
 
-    # 2. Render deploy hook fallback
-    if not has_integration and project.deploy_hook_url:
-        try:
-            with safe_urlopen(
-                project.deploy_hook_url,
-                data=b"",
-                headers={"User-Agent": "DeployEasy-Rollback/1.0"},
-                timeout=5.0,
-            ) as resp:
-                log_lines.append(f"✓ Render rollback hook notified (HTTP {resp.status})")
-                has_integration = True
-        except Exception as exc:  # noqa: BLE001
-            log_lines.append(f"⚠️ Render deploy hook error: {exc}")
-            rollback_status = "failure"
-
     if not has_integration and rollback_status != "failure":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No rollback integration configured. Set GITHUB_TOKEN or deploy hook in project settings.",
-        )
+        rollback_status = "failure"
 
     # 3. Live version verification check
     if rollback_status == "deploying" and project.service_url:
@@ -771,20 +833,159 @@ def rollback_deployment(payload: RollbackRequest, user: CurrentUser, db: DbSessi
         else:
             log_lines.append("⏳ Rollback dispatched; awaiting live container convergence on /version")
 
-    rollback_dep = Deployment(
-        project_id=project.id,
-        commit_sha=sha,
-        commit_message=f"Rollback to {sha[:7]}: {payload.reason}",
-        branch=project.branch,
-        trigger_type="rollback",
-        status=rollback_status,
-        duration_seconds=0,
-        logs_summary="\n".join(log_lines),
-    )
-    db.add(rollback_dep)
+    db.refresh(rollback_dep)
+    if rollback_dep.status not in {"success", "failure", "rolled_back"}:
+        rollback_dep.status = rollback_status
+    rollback_dep.logs_summary = (rollback_dep.logs_summary or "") + "\n" + "\n".join(log_lines)
     db.commit()
     db.refresh(rollback_dep)
     return rollback_dep
+
+
+@app.post("/api/deployments/{deployment_id}/verify", response_model=DeploymentResponse)
+def verify_deployment_live(
+    deployment_id: int,
+    user: CurrentUser,
+    db: DbSession,
+    csrf: CsrfProtect = None,
+):
+    """Check live service /version to verify container convergence and update status."""
+    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
+    if not dep:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+
+    project = get_authorized_project(dep.project_id, user, db, require_write=False)
+    if not project.service_url:
+        raise HTTPException(status_code=400, detail="Project has no service_url configured for verification")
+
+    is_live = verify_live_version(project.service_url, dep.commit_sha, retries=2, delay=1.0)
+    if is_live:
+        target_status = "rolled_back" if dep.trigger_type == "rollback" else "success"
+        dep.status = target_status
+        dep.logs_summary = (dep.logs_summary or "") + f"\n✓ Live /version probe confirmed commit {dep.commit_sha[:7]} is running."
+        db.commit()
+        db.refresh(dep)
+    return dep
+
+
+@app.post("/api/webhooks/deployment-result")
+async def receive_deployment_result(request: Request, db: DbSession):
+    """Accept a signed terminal result from the configured GitHub Actions workflow."""
+    if not config.DEPLOYEASY_CALLBACK_SECRET:
+        raise HTTPException(status_code=503, detail="Deployment result callbacks are not configured.")
+
+    raw_body = await request.body()
+    if len(raw_body) > 16_384:
+        raise HTTPException(status_code=413, detail="Callback payload is too large.")
+
+    signature = request.headers.get("X-DeployEasy-Signature-256", "")
+    expected = "sha256=" + hmac.new(
+        config.DEPLOYEASY_CALLBACK_SECRET.encode("utf-8"), raw_body, hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        raise HTTPException(status_code=401, detail="Invalid callback signature.")
+
+    try:
+        body = json.loads(raw_body)
+        deployment_id = int(body["deployment_id"])
+        target_sha = str(body["commit_sha"]).strip().lower()
+        repository = str(body["repository"]).strip().lower()
+        run_id = str(body["run_id"]).strip()
+        result = str(body["result"]).strip().lower()
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid deployment callback payload.")
+
+    if deployment_id < 1 or not re.fullmatch(r"[0-9a-f]{40}", target_sha):
+        raise HTTPException(status_code=400, detail="Invalid deployment ID or commit SHA.")
+    if not run_id.isdigit() or result not in {"success", "failure"} or not repository:
+        raise HTTPException(status_code=400, detail="Invalid workflow run metadata.")
+
+    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
+    if not dep:
+        raise HTTPException(status_code=404, detail="Deployment record not found.")
+    project = db.query(Project).filter(Project.id == dep.project_id).first()
+    if not project or project.repo_name.strip().lower() != repository:
+        raise HTTPException(status_code=403, detail="Callback repository does not match this deployment.")
+    if dep.commit_sha.lower() != target_sha:
+        raise HTTPException(status_code=409, detail="Callback SHA does not match this deployment.")
+    if dep.workflow_run_id and dep.workflow_run_id != run_id:
+        raise HTTPException(status_code=409, detail="A different workflow run is already linked to this deployment.")
+    final_status = ("rolled_back" if dep.trigger_type == "rollback" else "success") if result == "success" else "failure"
+    if dep.workflow_run_id == run_id and dep.status == final_status:
+        return {"updated": False, "status": dep.status, "workflow_run_id": run_id}
+    if dep.status in {"success", "failure", "rolled_back"} and dep.workflow_run_id:
+        raise HTTPException(status_code=409, detail="Deployment already has a terminal result.")
+
+    dep.status = final_status
+    dep.workflow_run_id = run_id
+    dep.logs_summary = (dep.logs_summary or "") + f"\nGitHub Actions run {run_id} completed with result: {result}."
+    db.commit()
+    db.refresh(dep)
+    return {"updated": True, "status": dep.status, "workflow_run_id": run_id}
+
+
+@app.post("/api/webhooks/github")
+async def receive_github_workflow_event(request: Request, db: DbSession):
+    """Ingest signed completed push workflows for projects with matching repository and branch."""
+    if not config.GITHUB_WEBHOOK_SECRET:
+        raise HTTPException(status_code=503, detail="GitHub webhooks are not configured.")
+
+    raw_body = await request.body()
+    if len(raw_body) > 1_048_576:
+        raise HTTPException(status_code=413, detail="Webhook payload is too large.")
+    signature = request.headers.get("X-Hub-Signature-256", "")
+    expected = "sha256=" + hmac.new(
+        config.GITHUB_WEBHOOK_SECRET.encode("utf-8"), raw_body, hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        raise HTTPException(status_code=401, detail="Invalid GitHub webhook signature.")
+
+    if request.headers.get("X-GitHub-Event") != "workflow_run":
+        return {"ignored": True, "reason": "Unsupported event."}
+    try:
+        body = json.loads(raw_body)
+        workflow = body.get("workflow", {})
+        run = body.get("workflow_run", {})
+        repo_data = body.get("repository", {})
+        repository = str(repo_data.get("full_name", "")).strip().lower()
+        run_id = str(run.get("id", "")).strip()
+        commit_sha = str(run.get("head_sha", "")).strip().lower()
+        branch = str(run.get("head_branch", "")).strip()
+    except (json.JSONDecodeError, AttributeError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid GitHub webhook payload.")
+
+    if body.get("action") != "completed" or run.get("event") != "push":
+        return {"ignored": True, "reason": "Only completed push workflow runs are recorded."}
+    if not str(workflow.get("path", "")).endswith("pipeline.yml"):
+        return {"ignored": True, "reason": "Workflow is not the DeployEasy pipeline."}
+    if not repository or not run_id.isdigit() or not re.fullmatch(r"[0-9a-f]{40}", commit_sha):
+        raise HTTPException(status_code=400, detail="Missing or invalid repository, run ID, or commit SHA.")
+
+    project = db.query(Project).filter(func.lower(Project.repo_name) == repository).first()
+    if not project or project.branch != branch:
+        return {"ignored": True, "reason": "No configured project matches this repository and branch."}
+    duplicate = db.query(Deployment).filter(Deployment.workflow_run_id == run_id).first()
+    if duplicate:
+        return {"updated": False, "deployment_id": duplicate.id, "status": duplicate.status}
+
+    conclusion = str(run.get("conclusion") or "failure").lower()
+    result = "success" if conclusion == "success" else "failure"
+    head_commit = run.get("head_commit") or {}
+    dep = Deployment(
+        project_id=project.id,
+        commit_sha=commit_sha,
+        commit_message=str(head_commit.get("message", ""))[:255],
+        branch=branch,
+        trigger_type="git_push",
+        status=result,
+        duration_seconds=0,
+        workflow_run_id=run_id,
+        logs_summary=f"GitHub Actions pipeline run {run_id} completed: {conclusion}.",
+    )
+    db.add(dep)
+    db.commit()
+    db.refresh(dep)
+    return {"updated": True, "deployment_id": dep.id, "status": dep.status}
 
 
 # -----------------------------------------------------------------------------
@@ -853,29 +1054,7 @@ def validate_env_config(payload: EnvValidationRequest):
 def get_project_readiness(project_id: int, user: CurrentUser, db: DbSession):
     """Calculate pre-deployment readiness score and hard safety gates for an authorized project."""
     project = get_authorized_project(project_id, user, db, require_write=False)
-
-    critical_cves = 0
-    high_cves = 0
-    secrets_found = False
-    for scan in project.security_scans:
-        if scan.scan_type == "trivy":
-            critical_cves += scan.critical_count
-            high_cves += scan.high_count
-        elif scan.scan_type == "gitleaks" and not scan.passed:
-            secrets_found = True
-
-    last_dep = project.deployments[0] if project.deployments else None
-    tests_ok = (last_dep is not None and last_dep.status in ("success", "rolled_back"))
-    rollback_ok = len(project.deployments) > 1
-
-    return calculate_readiness_score(
-        tests_passed=tests_ok,
-        critical_vulns=critical_cves,
-        high_vulns=high_cves,
-        secrets_detected=secrets_found,
-        health_status=project.status,
-        rollback_available=rollback_ok,
-    )
+    return evaluate_project_readiness(project)
 
 
 # -----------------------------------------------------------------------------
@@ -996,12 +1175,20 @@ def get_system_overview(db: DbSession, user: CurrentUser):
     recent = [d for d in all_deployments][:8]
     avg_duration = sum(d.duration_seconds for d in all_deployments) / len(all_deployments) if all_deployments else 0.0
 
+    latest_health = [p.health_checks[0] if p.health_checks else None for p in projects]
+    if not projects or any(check is None for check in latest_health):
+        fleet_health = "Unknown"
+    elif all(check.is_healthy for check in latest_health):
+        fleet_health = "Operational"
+    else:
+        fleet_health = "Degraded"
+
     return OverviewStats(
         total_projects=len(projects),
         active_deployments=len([p for p in projects if p.status == "operational"]),
         successful_deployments=len(successful),
         failed_deployments=len(failed),
-        fleet_health="Operational" if not failed else "Degraded",
+        fleet_health=fleet_health,
         avg_deploy_time_seconds=round(avg_duration, 1),
         process_uptime_seconds=round(time.time() - START_TIME, 1),
         requests_served=requests_served,

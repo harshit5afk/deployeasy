@@ -11,6 +11,8 @@ def calculate_readiness_score(
     critical_vulns: int = 0,
     high_vulns: int = 0,
     secrets_detected: bool = False,
+    vulnerability_scan_available: bool = True,
+    secrets_scan_available: bool = True,
     health_status: str = "operational",
     rollback_available: bool = True,
 ) -> dict[str, Any]:
@@ -26,7 +28,9 @@ def calculate_readiness_score(
         checklist.append({"category": "CI Tests", "status": "FAIL", "points": 0, "message": "Failing test assertions in test suite."})
 
     # 2. Container Security & CVEs (25 points)
-    if critical_vulns == 0 and high_vulns == 0:
+    if not vulnerability_scan_available:
+        checklist.append({"category": "Vulnerability Scan", "status": "UNKNOWN", "points": 0, "message": "No Trivy report is recorded for this project."})
+    elif critical_vulns == 0 and high_vulns == 0:
         score += 25
         checklist.append({"category": "Vulnerability Scan", "status": "PASS", "points": 25, "message": "Zero Critical or High severity CVEs in container image."})
     elif critical_vulns == 0 and high_vulns > 0:
@@ -36,7 +40,9 @@ def calculate_readiness_score(
         checklist.append({"category": "Vulnerability Scan", "status": "FAIL", "points": 0, "message": f"{critical_vulns} Critical CVEs detected in image."})
 
     # 3. Secrets Audit (20 points)
-    if not secrets_detected:
+    if not secrets_scan_available:
+        checklist.append({"category": "Secrets Audit", "status": "UNKNOWN", "points": 0, "message": "No Gitleaks report is recorded for this project."})
+    elif not secrets_detected:
         score += 20
         checklist.append({"category": "Secrets Audit", "status": "PASS", "points": 20, "message": "No exposed API keys or credentials detected by Gitleaks."})
     else:
@@ -61,6 +67,10 @@ def calculate_readiness_score(
 
     # Hard Safety Gates Check: A failure in tests, critical CVEs, or secrets is a hard blocker
     hard_blockers: list[str] = []
+    if not vulnerability_scan_available:
+        hard_blockers.append("No vulnerability scan report is recorded for the release.")
+    if not secrets_scan_available:
+        hard_blockers.append("No secrets scan report is recorded for the release.")
     if not tests_passed:
         hard_blockers.append("Automated test suite failed assertions.")
     if critical_vulns > 0:
@@ -99,5 +109,7 @@ def calculate_readiness_score(
         "checklist": checklist,
         "deployment_blocked": is_blocked,
         "blocking_reasons": hard_blockers,
+        "evaluated_target": "",
+        "evaluated_at": "",
     }
 

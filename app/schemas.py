@@ -1,7 +1,8 @@
 """Pydantic schemas for DeployEasy REST API."""
 from datetime import datetime
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class UserCreate(BaseModel):
@@ -41,6 +42,28 @@ class ProjectBase(BaseModel):
 
 class ProjectCreate(ProjectBase):
     deploy_hook_url: str = Field("", max_length=255)
+    repo_url: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_github_url(cls, values):
+        if isinstance(values, dict) and not values.get("repo_name") and values.get("repo_url"):
+            raw_repo = values["repo_url"].strip()
+            parsed = urlparse(raw_repo if "://" in raw_repo else f"https://{raw_repo}")
+            if parsed.scheme != "https" or parsed.hostname not in {"github.com", "www.github.com"}:
+                raise ValueError("Enter a GitHub repository URL such as https://github.com/owner/repo")
+            parts = [part for part in parsed.path.strip("/").split("/") if part]
+            if len(parts) != 2:
+                raise ValueError("GitHub URL must point to a repository in owner/repo format")
+            owner, repo = parts
+            if repo.endswith(".git"):
+                repo = repo[:-4]
+            values = {**values, "repo_name": f"{owner}/{repo}"}
+        return values
+
+
+class GitHubRepositoryRequest(BaseModel):
+    repo_url: str = Field(..., min_length=5, max_length=255)
 
 
 class ProjectUpdate(BaseModel):
@@ -175,6 +198,8 @@ class ReadinessResponse(BaseModel):
     checklist: list[ChecklistItem]
     deployment_blocked: bool = False
     blocking_reasons: list[str] = Field(default_factory=list)
+    evaluated_target: str = ""
+    evaluated_at: str = ""
 
 
 

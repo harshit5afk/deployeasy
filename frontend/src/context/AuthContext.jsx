@@ -45,8 +45,16 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       await api.logout();
-    } finally {
+    } catch (_) {}
+    finally {
       setUser(null);
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+        document.cookie = 'deployeasy_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        document.cookie = 'deployeasy_csrf=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        document.cookie = 'deployeasy_mode=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      } catch (_) {}
     }
   };
 

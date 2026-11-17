@@ -6,6 +6,7 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
   const [loading, setLoading] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [rollbackSha, setRollbackSha] = useState('');
+  const [commitSha, setCommitSha] = useState('');
   const [rollbackMsg, setRollbackMsg] = useState(null);
 
   // Git Diff tool state
@@ -44,9 +45,12 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
 
   const handleTriggerDeploy = async () => {
     if (!activeProjectId) return;
+    const sha = commitSha.trim().toLowerCase();
+    if (!/^[0-9a-f]{40}$/.test(sha)) { alert('Enter the full 40-character commit SHA to deploy.'); return; }
+    const project = projects.find((item) => item.id === activeProjectId);
     setDeploying(true);
     try {
-      await api.triggerDeploy(activeProjectId);
+      await api.triggerDeploy(activeProjectId, { commit_sha: sha, branch: project?.branch || 'main' });
       await loadDeployments(activeProjectId);
     } catch (err) {
       alert(err.message || 'Deploy failed');
@@ -63,7 +67,7 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
       const res = await api.triggerRollback(activeProjectId, sha);
       setRollbackMsg({
         type: res.status === 'rolled_back' ? 'success' : 'info',
-        text: `Rollback triggered. Status: ${res.status}. Verified SHA: ${res.target_sha.substring(0, 8)}`
+        text: `Rollback triggered. Status: ${res.status}. Target SHA: ${res.commit_sha.substring(0, 8)}`
       });
       await loadDeployments(activeProjectId);
     } catch (err) {
@@ -76,7 +80,9 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
     setDiffLoading(true);
     setDiffResult(null);
     try {
-      const res = await api.getGitDiff(activeProjectId, baseSha, headSha);
+      const deployment = deployments.find((item) => item.commit_sha === headSha);
+      if (!deployment) throw new Error('Diff summary is available for a recorded deployment.');
+      const res = await api.getGitDiff(deployment.id);
       setDiffResult(res);
     } catch (err) {
       alert(err.message || 'Failed to fetch diff');
@@ -89,7 +95,7 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
     switch (status) {
       case 'success':
         return <span className="badge-status badge-success">✓ SUCCESS</span>;
-      case 'failed':
+      case 'failure':
         return <span className="badge-status badge-failed">✕ FAILED</span>;
       case 'rolled_back':
         return <span className="badge-status badge-rolled-back">⏪ ROLLED BACK</span>;
@@ -138,6 +144,10 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
             {deploying ? 'Deploying...' : '🚀 Trigger Deploy'}
           </button>
         </div>
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <input className="form-input" value={commitSha} onChange={(e) => setCommitSha(e.target.value)} placeholder="Full 40-character commit SHA" aria-label="Commit SHA to deploy" />
       </div>
 
       {rollbackMsg && (
@@ -195,7 +205,7 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
                   </td>
                   <td>{getStatusBadge(d.status)}</td>
                   <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                    {d.duration_seconds ? `${d.duration_seconds}s` : '42s'}
+                    {d.duration_seconds ? `${d.duration_seconds}s` : '—'}
                   </td>
                   <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     {d.created_at ? new Date(d.created_at).toLocaleTimeString() : 'Recent'}
@@ -264,27 +274,17 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
           <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1rem', marginTop: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.85rem' }}>
               <span style={{ fontWeight: 700, color: '#34d399' }}>
-                ✓ {diffResult.commits_ahead || 1} commit ahead • {diffResult.files_changed?.length || 3} files changed
+                {diffResult.diff_summary} · {diffResult.status}
               </span>
               <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                +{diffResult.additions || 42} / -{diffResult.deletions || 8}
+                {diffResult.trigger_type} · duration change {diffResult.duration_difference}s
               </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.75rem' }}>
-              {diffResult.files_changed && diffResult.files_changed.map((f, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.65rem', borderRadius: '4px' }}>
-                  <span style={{ color: '#c7d2fe' }}>📄 {f}</span>
-                  <span style={{ color: '#34d399' }}>MODIFIED</span>
-                </div>
-              ))}
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Previous {diffResult.previous_sha} → Current {diffResult.current_sha}</div>
             </div>
 
-            {diffResult.diff_snippet && (
-              <pre style={{ background: '#0a0d14', border: '1px solid var(--border)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.75rem', color: '#a7f3d0', overflowX: 'auto', fontFamily: 'var(--font-mono)' }}>
-                {diffResult.diff_snippet}
-              </pre>
-            )}
           </div>
         )}
       </div>

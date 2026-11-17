@@ -66,14 +66,24 @@ def verify_password(plain_password: str, stored_hash: str) -> bool:
         return False
 
 
+def hash_session_token(token: str) -> str:
+    """Hash session token with SHA-256 for persistent database storage."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 def create_user_session(db: Session, user: User) -> UserSession:
-    """Generate and persist a cryptographically secure session in the database."""
-    session_token = secrets.token_urlsafe(32)
+    """Generate and persist a cryptographically secure session in the database.
+
+    The raw token is returned to the user via cookie and attached as session.raw_token,
+    while the hashed token is stored at rest in the database.
+    """
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = hash_session_token(raw_token)
     csrf_token = secrets.token_urlsafe(32)
     expires_at = datetime.now(UTC) + timedelta(days=SESSION_LIFETIME_DAYS)
 
     session_record = UserSession(
-        session_token=session_token,
+        session_token=token_hash,
         csrf_token=csrf_token,
         user_id=user.id,
         expires_at=expires_at,
@@ -81,15 +91,17 @@ def create_user_session(db: Session, user: User) -> UserSession:
     db.add(session_record)
     db.commit()
     db.refresh(session_record)
+    session_record.raw_token = raw_token
     return session_record
 
 
 def set_session_cookies(response: Response, session: UserSession) -> None:
     """Set secure HTTP-only session cookie and companion CSRF cookie."""
+    token_val = getattr(session, "raw_token", session.session_token)
     # HttpOnly session cookie
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
-        value=session.session_token,
+        value=token_val,
         httponly=True,
         secure=config.COOKIE_SECURE,
         samesite="lax",
@@ -143,10 +155,11 @@ def get_current_session(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    token_hash = hash_session_token(token)
     session_record = (
         db.query(UserSession)
         .filter(
-            UserSession.session_token == token,
+            (UserSession.session_token == token_hash) | (UserSession.session_token == token),
             UserSession.expires_at > datetime.now(UTC),
         )
         .first()

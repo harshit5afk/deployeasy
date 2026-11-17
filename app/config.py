@@ -8,6 +8,8 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")  # Personal Access Token or fine-gr
 GITHUB_APP_ID = os.getenv("GITHUB_APP_ID", "")
 GITHUB_APP_PRIVATE_KEY = os.getenv("GITHUB_APP_PRIVATE_KEY", "")
 GITHUB_APP_INSTALLATION_ID = os.getenv("GITHUB_APP_INSTALLATION_ID", "")
+DEPLOYEASY_CALLBACK_SECRET = os.getenv("DEPLOYEASY_CALLBACK_SECRET", "")
+GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET", "")
 
 # Normalize Postgres connection string for SQLAlchemy 2.x
 _default_db = "sqlite:///./test_deployeasy.db" if os.getenv("TESTING") == "1" else "sqlite:///./deployeasy.db"
@@ -38,5 +40,11 @@ DEPLOYEASY_ADMIN_PASSWORD = os.getenv(
 )
 
 # Security and Demo Flags
+ENVIRONMENT = os.getenv("ENVIRONMENT", os.getenv("DEPLOYEASY_ENV", "development")).lower()
 DEPLOYEASY_DEMO_MODE = os.getenv("DEPLOYEASY_DEMO_MODE", "false").lower() in ("true", "1", "yes")
-COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
+
+_cookie_secure_env = os.getenv("COOKIE_SECURE")
+if _cookie_secure_env is not None:
+    COOKIE_SECURE = _cookie_secure_env.lower() in ("true", "1", "yes")
+else:
+    COOKIE_SECURE = ENVIRONMENT in ("production", "prod")

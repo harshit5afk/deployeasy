@@ -177,9 +177,12 @@ Server will be running at: **`http://localhost:8080`**
 | `POST`| `/api/auth/logout` | Invalidate persistent session token | Yes |
 | `GET` | `/api/projects` | List connected projects scoped to authenticated user | Yes |
 | `POST`| `/api/projects` | Register a new repository and deployment hook | Yes |
+| `POST`| `/api/github/repository-check` | Check repository access, default branch, and required workflows | Yes |
 | `GET` | `/api/projects/{id}/deployments` | Retrieve deployment history with status and duration | Yes |
-| `POST`| `/api/deployments/trigger` | Trigger a new deployment via GitHub Actions or hook | Yes |
-| `POST`| `/api/deployments/rollback` | Execute verified 1-click rollback to a specific SHA | Yes |
+| `POST`| `/api/deployments/trigger` | Dispatch a SHA-pinned GitHub Actions release | Yes |
+| `POST`| `/api/deployments/rollback` | Dispatch a SHA-pinned rollback and record workflow result | Yes |
+| `POST`| `/api/webhooks/deployment-result` | Receive signed release and rollback results | HMAC signature |
+| `POST`| `/api/webhooks/github` | Receive signed completed push workflow events | GitHub signature |
 | `GET` | `/api/deployments/{id}/diff` | Compare Git commits and file changes between releases | Yes |
 | `GET` | `/api/projects/{id}/readiness` | Calculate 0-100% pre-deploy safety gate score | Yes |
 | `POST`| `/api/projects/{id}/check-health`| Execute SSRF-safe live probe against target URL | Yes |
@@ -204,13 +207,18 @@ Follow these steps to deploy DeployEasy to production:
    - Set Health Check Path: `/health`.
    - Set Environment Variables:
      - `PORT=8080`
-     - `DEPLOYEASY_SECRET_KEY=<strong-random-secret>`
-     - `DATABASE_URL=postgresql://...` *(optional: defaults to local persistent SQLite)*
-4. **Deploy Hook & GitHub Secrets**:
-   - In Render, copy your service's **Deploy Hook URL**.
-   - In GitHub **Settings → Secrets and variables → Actions**, add:
-     - Secret: `RENDER_DEPLOY_HOOK_URL` = `<your-render-deploy-hook-url>`
-     - Variable: `SERVICE_URL` = `https://<your-render-app-name>.onrender.com`
+     - `ENVIRONMENT=production`
+     - `DATABASE_URL=<managed PostgreSQL URL>` (recommended; use persistent storage for SQLite)
+     - `DEPLOYEASY_CALLBACK_SECRET=<random shared HMAC secret>`
+     - `GITHUB_WEBHOOK_SECRET=<separate random webhook secret>`
+     - `GITHUB_TOKEN=<token with Actions workflow dispatch permission>`
+     - `DEPLOYEASY_ADMIN_PASSWORD=<strong initial admin password>`
+4. **GitHub Actions configuration**:
+   - Connected repositories need compatible `.github/workflows/pipeline.yml` and `rollback.yml` workflows.
+   - Configure DeployEasy's `GITHUB_TOKEN` with permission to dispatch repository workflows.
+   - Add Actions secret `DEPLOYEASY_CALLBACK_SECRET` matching DeployEasy and variable `DEPLOYEASY_CALLBACK_URL=https://<your-deployeasy-host>`.
+   - Set variable `SERVICE_URL=https://<your-service-host>` so workflows deploy and verify the pinned image.
+   - Configure the repository webhook at `https://<your-deployeasy-host>/api/webhooks/github`, select `workflow_run`, and use a separate secret matching `GITHUB_WEBHOOK_SECRET` in DeployEasy.
 5. **Synthetic Uptime Monitoring**:
    - Create a free monitor on [UptimeRobot](https://uptimerobot.com) targeting `https://<your-app>.onrender.com/health` with a 5-minute probe interval.
 

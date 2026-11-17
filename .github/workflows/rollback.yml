@@ -6,6 +6,9 @@ on:
       sha:
         description: "Full 40-character commit SHA of the last good version"
         required: true
+      deployment_id:
+        description: "DeployEasy deployment record ID"
+        required: false
 
 permissions:
   contents: read
@@ -47,3 +50,27 @@ jobs:
           ./scripts/deploy_and_verify.sh
       - name: Reminder
         run: echo "::notice::Rollback done. Now open a revert or fix pull request so main no longer contains the bad code."
+
+  report-rollback:
+    needs: rollback
+    if: always() && inputs.deployment_id != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report result to DeployEasy
+        env:
+          CALLBACK_URL: ${{ vars.DEPLOYEASY_CALLBACK_URL }}
+          CALLBACK_SECRET: ${{ secrets.DEPLOYEASY_CALLBACK_SECRET }}
+          DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+          SHA: ${{ inputs.sha }}
+          RESULT: ${{ needs.rollback.result }}
+          RUN_ID: ${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          [[ -n "$CALLBACK_URL" && -n "$CALLBACK_SECRET" ]] || { echo "::error::Set DEPLOYEASY_CALLBACK_URL and DEPLOYEASY_CALLBACK_SECRET"; exit 1; }
+          RESULT_JSON="failure"
+          [[ "$RESULT" == "success" ]] && RESULT_JSON="success"
+          BODY=$(jq -cn --argjson deployment_id "$DEPLOYMENT_ID" --arg commit_sha "$SHA" --arg repository "$REPOSITORY" --arg run_id "$RUN_ID" --arg result "$RESULT_JSON" '{deployment_id:$deployment_id,commit_sha:$commit_sha,repository:$repository,run_id:$run_id,result:$result}')
+          SIGNATURE=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$CALLBACK_SECRET" -hex | awk '{print $2}')
+          curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+            -H 'Content-Type: application/json' -H "X-DeployEasy-Signature-256: sha256=$SIGNATURE" \
+            --data "$BODY" "$CALLBACK_URL/api/webhooks/deployment-result"

@@ -6,6 +6,8 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated }) {
   const [repoUrl, setRepoUrl] = useState('');
   const [serviceUrl, setServiceUrl] = useState('');
   const [deployHookUrl, setDeployHookUrl] = useState('');
+  const [repositoryCheck, setRepositoryCheck] = useState(null);
+  const [checkingRepository, setCheckingRepository] = useState(false);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -16,9 +18,12 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated }) {
     setError(null);
     setSubmitting(true);
     try {
+      const checkedRepository = await api.checkGithubRepository(repoUrl);
+      setRepositoryCheck(checkedRepository);
       const created = await api.createProject({
         name,
         repo_url: repoUrl || undefined,
+        branch: checkedRepository.default_branch || 'main',
         service_url: serviceUrl || undefined,
         deploy_hook_url: deployHookUrl || undefined
       });
@@ -71,15 +76,27 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated }) {
             <label className="form-label">GitHub Repository URL</label>
             <input
               type="url"
+              required
               className="form-input"
               placeholder="https://github.com/myorg/payments-api"
               value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
+              onChange={(e) => { setRepoUrl(e.target.value); setRepositoryCheck(null); }}
             />
+            <button type="button" className="btn-secondary" disabled={checkingRepository || !repoUrl.trim()} onClick={async () => {
+              setCheckingRepository(true); setError(null);
+              try { setRepositoryCheck(await api.checkGithubRepository(repoUrl)); }
+              catch (err) { setRepositoryCheck(null); setError(err.message); }
+              finally { setCheckingRepository(false); }
+            }} style={{ marginTop: '0.5rem', padding: '0.4rem 0.7rem' }}>
+              {checkingRepository ? 'Checking GitHub…' : 'Check repository setup'}
+            </button>
+            {repositoryCheck && <p style={{ fontSize: '0.78rem', color: repositoryCheck.ready ? '#34d399' : '#fbbf24', marginTop: '0.5rem' }}>
+              {repositoryCheck.repo_name} · default branch: {repositoryCheck.default_branch} · repo access {repositoryCheck.token_can_access_repo ? 'verified' : 'public read only'} · pipeline {repositoryCheck.workflows['pipeline.yml'] ? 'found' : 'missing'} · rollback {repositoryCheck.workflows['rollback.yml'] ? 'found' : 'missing'} · verify the token has Actions: write permission
+            </p>}
           </div>
 
           <div className="form-group">
-            <label className="form-label">Production Service URL (Health Probing)</label>
+            <label className="form-label">Production Service URL (required for deploy verification)</label>
             <input
               type="url"
               className="form-input"

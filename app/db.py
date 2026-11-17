@@ -1,4 +1,5 @@
 """Database session and engine setup for DeployEasy."""
+import os
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 
@@ -18,7 +19,7 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from . import config
 
 # SQLite requires check_same_thread=False for multithreaded FastAPI requests
-connect_args = {"check_same_thread": False} if config.DATABASE_URL.startswith("sqlite") else {}
+connect_args = {"check_same_thread": False, "timeout": 15} if config.DATABASE_URL.startswith("sqlite") else {}
 
 engine = create_engine(config.DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -301,12 +302,28 @@ def seed_demo_fixtures(db: SessionLocal):
     db.commit()
 
 
+def run_migrations() -> None:
+    """Apply Alembic migrations in deployed environments; create tables for tests/dev fallback."""
+    alembic_ini_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini")
+    if config.ENVIRONMENT in ("production", "prod") and os.getenv("TESTING") != "1":
+        if not os.path.exists(alembic_ini_path):
+            raise FileNotFoundError("alembic.ini is required in production deployments")
+        from alembic.config import Config
+
+        from alembic import command
+
+        cfg = Config(alembic_ini_path)
+        command.upgrade(cfg, "head")
+        return
+    Base.metadata.create_all(bind=engine)
+
+
 def init_db():
-    """Create all tables and optionally seed admin user from environment variables.
+    """Create all tables or apply migrations, and optionally seed admin user from environment variables.
     
     Zero hardcoded credentials or password hashes exist in production code.
     """
-    Base.metadata.create_all(bind=engine)
+    run_migrations()
     db = SessionLocal()
     try:
         # Only seed admin if explicit password is provided in environment

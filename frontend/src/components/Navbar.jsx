@@ -7,6 +7,7 @@ export function Navbar({ onOpenNewProject }) {
   const location = useLocation();
   const navigate = useNavigate();
   const isDashboard = location.pathname.startsWith('/dashboard');
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/signup';
 
   const handleLogout = async () => {
     await logout();
@@ -23,7 +24,30 @@ export function Navbar({ onOpenNewProject }) {
           <span className="brand-text">Deploy<span>Easy</span></span>
         </Link>
 
-        {!isDashboard ? (
+        {isAuthPage ? (
+          /* Clean Auth Header: Back to Landing Page only */
+          <div className="header-actions">
+            <Link
+              to="/"
+              className="btn-secondary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                padding: '0.45rem 1rem',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                color: 'var(--text-main)',
+                textDecoration: 'none',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+              }}
+            >
+              ← Back to Landing Page
+            </Link>
+          </div>
+        ) : !isDashboard ? (
           <>
             <ul className="nav-links" style={{ display: 'flex', gap: '1.75rem', listStyle: 'none' }}>
               <li><a href="#pipeline" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.88rem' }}>Workflow</a></li>
@@ -33,24 +57,48 @@ export function Navbar({ onOpenNewProject }) {
             </ul>
 
             <div className="header-actions">
-              <a
-                href="/demo"
-                target="_blank"
-                rel="noreferrer"
-                className="btn-demo-pill"
-                title="Open Interactive Demo Sandbox in a new tab with dummy data"
-              >
-                <span className="demo-dot"></span> ⚡ Demo Sandbox ↗
-              </a>
               {user ? (
-                <Link to="/dashboard" className="btn-primary">
-                  Dashboard →
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <div className="user-badge" title={`Logged in as ${user.username}`}>
+                    <span className="user-avatar-dot">{user.username ? user.username[0].toUpperCase() : 'U'}</span>
+                    <span>{user.username}</span>
+                  </div>
+                  <button className="btn-logout" onClick={handleLogout} title="Log out" style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}>
+                    Log out
+                  </button>
+                  <Link to="/dashboard" className="btn-primary">
+                    Dashboard →
+                  </Link>
+                </div>
               ) : (
-                <>
-                  <Link to="/login" className="btn-ghost">Log in</Link>
-                  <Link to="/dashboard" className="btn-primary">Dashboard →</Link>
-                </>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Link
+                    to="/login"
+                    className="btn-ghost"
+                    style={{
+                      fontWeight: 600,
+                      color: 'var(--text-main)',
+                      padding: '0.45rem 1rem',
+                      borderRadius: '8px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    Log In
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="btn-primary"
+                    style={{
+                      padding: '0.45rem 1.15rem',
+                      fontSize: '0.88rem',
+                      fontWeight: 600,
+                      borderRadius: '8px',
+                    }}
+                  >
+                    Sign Up
+                  </Link>
+                </div>
               )}
             </div>
           </>

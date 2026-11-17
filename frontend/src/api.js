@@ -6,7 +6,7 @@ function getCookie(name) {
 }
 
 export function getCsrfToken() {
-  return getCookie('csrf_token') || '';
+  return getCookie('deployeasy_csrf') || '';
 }
 
 export function getAuthHeaders(includeJson = true) {
@@ -60,7 +60,7 @@ export const api = {
   logout: () => apiFetch('/api/auth/logout', { method: 'POST' }),
 
   // System & Telemetry
-  getOverview: () => apiFetch('/api/system/overview'),
+  getOverview: () => apiFetch('/api/overview'),
   getSystemMode: () => apiFetch('/api/system/mode'),
   setSystemMode: (mode) => apiFetch('/api/system/mode', {
     method: 'POST',
@@ -77,49 +77,67 @@ export const api = {
     body: JSON.stringify(data)
   }),
   getProject: (id) => apiFetch(`/api/projects/${id}`),
+  checkGithubRepository: (repoUrl) => apiFetch('/api/github/repository-check', {
+    method: 'POST', body: JSON.stringify({ repo_url: repoUrl })
+  }),
 
   // Deployments & Rollback
   getDeployments: (projectId) => apiFetch(`/api/projects/${projectId}/deployments`),
-  triggerDeploy: (projectId) => apiFetch(`/api/projects/${projectId}/deploy`, { method: 'POST' }),
-  triggerRollback: (projectId, targetSha) => apiFetch(`/api/projects/${projectId}/rollback`, {
-    method: 'POST',
-    body: JSON.stringify({ target_sha: targetSha })
+  triggerDeploy: (projectId, data) => apiFetch('/api/deployments/trigger', {
+    method: 'POST', body: JSON.stringify({ project_id: projectId, ...data })
   }),
-  getGitDiff: (projectId, baseSha, headSha) =>
-    apiFetch(`/api/projects/${projectId}/diff?base_sha=${encodeURIComponent(baseSha)}&head_sha=${encodeURIComponent(headSha)}`),
+  triggerRollback: (projectId, targetSha, reason) => apiFetch('/api/deployments/rollback', {
+    method: 'POST',
+    body: JSON.stringify({ project_id: projectId, target_sha: targetSha, reason })
+  }),
+  getGitDiff: (deploymentId) => apiFetch(`/api/deployments/${deploymentId}/diff`),
 
   // Health Probing
-  probeHealth: (projectId) => apiFetch(`/api/projects/${projectId}/health-check`, { method: 'POST' }),
+  probeHealth: (projectId) => apiFetch(`/api/projects/${projectId}/check-health`, { method: 'POST' }),
   getHealthHistory: (projectId) => apiFetch(`/api/projects/${projectId}/health-history`),
 
   // Security
-  getSecurityScans: (projectId) => apiFetch(`/api/projects/${projectId}/security-scans`),
+  getSecurityScans: (projectId) => apiFetch(`/api/projects/${projectId}/security`),
 
   // Readiness
-  getReadinessScore: (projectId) => apiFetch(`/api/projects/${projectId}/readiness-score`),
+  getReadinessScore: (projectId) => apiFetch(`/api/projects/${projectId}/readiness`),
 
   // Env Validator
-  validateEnv: (envText) => apiFetch('/api/tools/validate-env', {
-    method: 'POST',
-    body: JSON.stringify({ env_text: envText })
-  }),
+  validateEnv: (envText) => {
+    const lines = (envText || '').split(/\r?\n/);
+    const parsed = {};
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const idx = line.indexOf('=');
+      if (idx > 0) {
+        const key = line.slice(0, idx).trim();
+        const val = line.slice(idx + 1).trim();
+        if (key) parsed[key] = val;
+      }
+    }
+    return apiFetch('/api/validate-env', {
+      method: 'POST',
+      body: JSON.stringify({ env_vars: parsed })
+    });
+  },
 
   // FinOps Cost Estimator
   getCostEstimate: (projectId) => apiFetch(`/api/projects/${projectId}/costs`),
 
   // Failure Diagnostics & Incidents
-  analyzeLogs: (logText) => apiFetch('/api/tools/analyze-logs', {
+  analyzeLogs: (logText) => apiFetch('/api/analyze-logs', {
     method: 'POST',
-    body: JSON.stringify({ log_text: logText })
+    body: JSON.stringify({ logs: logText })
   }),
-  generateIncidentReport: (projectId, data) => apiFetch(`/api/projects/${projectId}/incident-report`, {
+  generateIncidentReport: (projectId, data) => apiFetch(`/api/projects/${projectId}/incidents/generate`, {
     method: 'POST',
     body: JSON.stringify(data)
   }),
 
   // Webhooks
-  testWebhook: (webhookUrl, eventType, payload) => apiFetch('/api/tools/test-webhook', {
+  testWebhook: (projectId, webhookUrl, platform) => apiFetch(`/api/projects/${projectId}/webhook-test`, {
     method: 'POST',
-    body: JSON.stringify({ webhook_url: webhookUrl, event_type: eventType, payload })
+    body: JSON.stringify({ webhook_url: webhookUrl, platform })
   })
 };

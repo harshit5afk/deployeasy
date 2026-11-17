@@ -5,6 +5,7 @@ GitHub tokens or GitHub App installation credentials, and verifies live versions
 """
 import json
 import logging
+import time
 import urllib.request
 from typing import Any
 
@@ -23,6 +24,61 @@ def get_github_auth_token() -> str:
     if config.GITHUB_TOKEN:
         return config.GITHUB_TOKEN.strip()
     return ""
+
+
+def inspect_github_repository(repo_name: str) -> dict[str, Any]:
+    """Check repository visibility, default branch, token access, and DeployEasy workflows."""
+    token = get_github_auth_token()
+    if not repo_name or not re_full_repo(repo_name):
+        raise GitHubIntegrationError("Enter a GitHub repository as owner/repo.")
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "DeployEasy-ControlCenter/1.0",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    try:
+        req = urllib.request.Request(f"https://api.github.com/repos/{repo_name}", headers=headers)
+        with urllib.request.urlopen(req, timeout=8) as response:
+            repo = json.load(response)
+        workflows = {}
+        for workflow in ("pipeline.yml", "rollback.yml"):
+            workflow_req = urllib.request.Request(
+                f"https://api.github.com/repos/{repo_name}/contents/.github/workflows/{workflow}",
+                headers=headers,
+            )
+            try:
+                with urllib.request.urlopen(workflow_req, timeout=5) as response:
+                    workflows[workflow] = response.status == 200
+            except urllib.error.HTTPError as err:
+                if err.code == 404:
+                    workflows[workflow] = False
+                else:
+                    raise
+        return {
+            "repo_name": repo.get("full_name", repo_name),
+            "default_branch": repo.get("default_branch", "main"),
+            "private": bool(repo.get("private")),
+            "token_configured": bool(token),
+            "token_can_access_repo": bool(token),
+            "dispatch_permission_note": "GitHub workflow_dispatch requires Actions: write permission; GitHub's repository metadata does not expose that permission for this token.",
+            "workflows": workflows,
+            "ready": bool(token) and all(workflows.values()),
+        }
+    except urllib.error.HTTPError as err:
+        if err.code in (401, 403, 404):
+            raise GitHubIntegrationError("GitHub could not access this repository. Check the URL and GITHUB_TOKEN repository permissions.") from err
+        raise GitHubIntegrationError(f"GitHub repository check failed (HTTP {err.code}).") from err
+    except Exception as err:
+        if isinstance(err, GitHubIntegrationError):
+            raise
+        raise GitHubIntegrationError(f"Could not reach GitHub: {err}") from err
+
+
+def re_full_repo(repo_name: str) -> bool:
+    import re
+    return bool(re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo_name))
 
 
 def dispatch_github_workflow(
@@ -83,22 +139,40 @@ def verify_live_version(
     expected_sha: str,
     timeout: float = 4.0,
     allow_local_for_testing: bool = False,
+    retries: int = 1,
+    delay: float = 2.0,
 ) -> bool:
-    """Probe the live service's /version endpoint to verify the running Git SHA matches expected_sha."""
-    if not service_url:
+    """Probe the live service's /version endpoint to verify the running Git SHA matches expected_sha.
+
+    Supports retries for container rollout convergence and strictly guards against empty or invalid SHAs.
+    """
+    if not service_url or not expected_sha:
+        return False
+
+    target_sha = expected_sha.strip().lower()
+    if len(target_sha) < 7:
         return False
 
     url = service_url.rstrip("/") + "/version"
-    try:
-        with safe_urlopen(url, timeout=timeout, allow_local_for_testing=allow_local_for_testing) as resp:
-            if resp.status == 200:
-                body = json.loads(resp.read().decode("utf-8"))
-                live_sha = str(body.get("git_sha", "")).strip().lower()
-                target_sha = expected_sha.strip().lower()
-                # Check 40-char exact or prefix match
-                if live_sha == target_sha or live_sha.startswith(target_sha[:7]) or target_sha.startswith(live_sha[:7]):
-                    return True
-    except Exception as exc:  # noqa: BLE001
-        log.info("Live version probe for %s returned: %s", url, exc)
-        return False
+
+    for attempt in range(max(1, retries)):
+        try:
+            with safe_urlopen(url, timeout=timeout, allow_local_for_testing=allow_local_for_testing) as resp:
+                if resp.status == 200:
+                    body = json.loads(resp.read().decode("utf-8"))
+                    live_sha = str(body.get("git_sha", "")).strip().lower()
+                    if len(live_sha) >= 7:
+                        # Full 40-character exact match preferred
+                        if len(live_sha) == 40 and len(target_sha) == 40:
+                            if live_sha == target_sha:
+                                return True
+                        # Prefix match requiring minimum 7 characters
+                        elif live_sha.startswith(target_sha[:7]):
+                            return True
+        except Exception as exc:  # noqa: BLE001
+            log.info("Live version probe for %s (attempt %d/%d) returned: %s", url, attempt + 1, retries, exc)
+
+        if attempt < retries - 1:
+            time.sleep(delay)
+
     return False

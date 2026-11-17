@@ -18,6 +18,7 @@ export function DashboardPage() {
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [overview, setOverview] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const tabsListRef = useRef(null);
 
@@ -35,9 +36,10 @@ export function DashboardPage() {
 
   const loadData = async () => {
     try {
-      const [ovData, projData] = await Promise.all([
+      const [ovData, projData, userData] = await Promise.all([
         api.getOverview().catch(() => null),
-        api.getProjects().catch(() => [])
+        api.getProjects().catch(() => []),
+        api.getCurrentUser().catch(() => null)
       ]);
       if (ovData) setOverview(ovData);
       if (projData) {
@@ -46,6 +48,7 @@ export function DashboardPage() {
           setSelectedProject(projData[0]);
         }
       }
+      setCurrentUser(userData);
     } catch (e) {
       console.error(e);
     }
@@ -87,8 +90,7 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* Live Demo Sandbox Banner */}
-        <div className="env-banner">
+        {currentUser?.role === 'demo' && <div className="env-banner">
           <div className="env-banner-left">
             <span className="env-banner-icon">⚡</span>
             <div>
@@ -99,7 +101,7 @@ export function DashboardPage() {
           <div className="env-banner-actions">
             <span className="demo-badge-tag">⚡ Dummy Data Active</span>
           </div>
-        </div>
+        </div>}
 
         {/* Tab Contents */}
         {activeTab === 'overview' && (

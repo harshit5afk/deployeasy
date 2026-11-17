@@ -61,7 +61,7 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject }) {
                   <tr key={p.id}>
                     <td>
                       <div style={{ fontWeight: 700, color: '#fff' }}>{p.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>ID: {p.id}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}><a href={`https://github.com/${p.repo_name}`} target="_blank" rel="noreferrer">{p.repo_name}</a> · {p.branch}</div>
                     </td>
                     <td>
                       <span className={`badge-status ${p.status === 'operational' ? 'badge-success' : 'badge-deploying'}`}>
@@ -69,7 +69,7 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject }) {
                       </span>
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: '#38bdf8' }}>
-                      {p.service_url || 'https://api.example.com'}
+                      {p.service_url || 'Not configured'}
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>
                       {result ? (
@@ -79,11 +79,11 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject }) {
                           <span style={{ color: '#f87171' }}>Failed</span>
                         )
                       ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>28.4ms (200 OK)</span>
+                        <span style={{ color: 'var(--text-muted)' }}>No probe recorded</span>
                       )}
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-dim)' }}>
-                      https://api.render.com/deploy/srv-••••••••
+                      {p.has_deploy_hook ? 'Configured' : 'Not configured'}
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <button

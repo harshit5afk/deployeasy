@@ -2,11 +2,7 @@ import React, { useState } from 'react';
 import { api } from '../../api';
 
 export function TabEnvValidator() {
-  const [envText, setEnvText] = useState(`DATABASE_URL=postgresql://user:secretpass@db.example.com:5432/proddb
-SECRET_KEY=supersecretjwtkey999
-PORT=8080
-LOG_LEVEL=INFO
-ALLOWED_HOSTS=payments.example.com,localhost`);
+  const [envText, setEnvText] = useState('');
 
   const [validation, setValidation] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -32,12 +28,12 @@ ALLOWED_HOSTS=payments.example.com,localhost`);
             <span>⚙️</span> Environment Variable Validator & Secret Leak Shield
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Audits format, missing keys, invalid ports, and guarantees zero leakage of raw passwords
+            Validate key/value syntax and policy checks. Avoid pasting production secrets into this tool.
           </span>
         </div>
 
         <div style={{ marginBottom: '1rem' }}>
-          <label className="form-label">Paste .env Configuration (Key=Value pairs):</label>
+          <label className="form-label">Enter non-production sample variables (Key=Value pairs):</label>
           <textarea
             className="form-input"
             rows={7}
@@ -48,7 +44,7 @@ ALLOWED_HOSTS=payments.example.com,localhost`);
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-          <button
+            <button
             onClick={() => setEnvText('PORT=hello\nDATABASE_URL=sqlite:///./test.db\nSECRET_KEY=changeme')}
             className="btn-secondary"
             style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}
@@ -78,7 +74,7 @@ ALLOWED_HOSTS=payments.example.com,localhost`);
                 )}
               </h3>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                {validation.warnings?.length || 0} warnings • {validation.missing_keys?.length || 0} missing required keys
+                {validation.variables_evaluated} variables evaluated · {validation.errors?.length || 0} errors · {validation.warnings?.length || 0} warnings
               </p>
             </div>
           </div>
@@ -93,21 +89,21 @@ ALLOWED_HOSTS=payments.example.com,localhost`);
               </tr>
             </thead>
             <tbody>
-              {validation.parsed_variables && Object.entries(validation.parsed_variables).map(([k, v]) => (
+              {validation.sanitized_variables && Object.entries(validation.sanitized_variables).map(([k, v]) => (
                 <tr key={k}>
                   <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#fff' }}>{k}</td>
                   <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {v.masked_value || '••••••••'}
+                    {v || '—'}
                   </td>
                   <td>
-                    {v.is_valid !== false ? (
+                    {validation.errors?.length === 0 ? (
                       <span className="badge-status badge-success">OK</span>
                     ) : (
                       <span className="badge-status badge-failed">INVALID</span>
                     )}
                   </td>
                   <td style={{ fontSize: '0.8rem', color: v.warning ? '#fbbf24' : 'var(--text-muted)' }}>
-                    {v.warning || 'Passes format and security constraints.'}
+                    {validation.warnings?.join(', ') || validation.errors?.join(', ') || 'Checked by server policy.'}
                   </td>
                 </tr>
               ))}

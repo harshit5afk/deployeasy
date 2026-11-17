@@ -36,15 +36,28 @@ export function LandingPage() {
             >
               ⚡ Try Live Demo Sandbox (Dummy Data) ↗
             </a>
-            <Link to="/dashboard" className="btn-primary" style={{ padding: '0.85rem 1.6rem', fontSize: '0.95rem' }}>
-              Open Live Dashboard →
+            <Link
+              to="/login"
+              className="btn-primary"
+              style={{
+                padding: '0.85rem 1.6rem',
+                fontSize: '0.95rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+              }}
+            >
+              Sign In 🔑
             </Link>
             <a
-              href="https://github.com"
+              href="https://github.com/harshit5afk/deployeasy"
               target="_blank"
               rel="noreferrer"
               className="btn-secondary"
-              style={{ padding: '0.85rem 1.4rem', fontSize: '0.95rem' }}
+              style={{
+                padding: '0.85rem 1.4rem',
+                fontSize: '0.95rem',
+              }}
             >
               GitHub Repository
             </a>

@@ -5,22 +5,18 @@ export function TabDiagnostics({ projects, selectedProject }) {
   const activeProjectId = selectedProject?.id || (projects && projects[0]?.id);
 
   // A. Failure Diagnostics
-  const [logText, setLogText] = useState(`FAILED tests/test_api.py::test_create_project - AssertionError: Expected 200 but received 500 Internal Server Error
-Traceback (most recent call last):
-  File "app/main.py", line 142, in create_project
-    db.commit()
-sqlite3.OperationalError: table projects has no column named service_url`);
+  const [logText, setLogText] = useState('');
   const [diagnosis, setDiagnosis] = useState(null);
   const [diagnosing, setDiagnosing] = useState(false);
 
   // B. Post-Mortem
-  const [incidentTitle, setIncidentTitle] = useState('Payment Gateway 502 Bad Gateway Outage');
-  const [incidentSummary, setIncidentSummary] = useState('Service returned HTTP 502 Bad Gateway for 4 minutes following release #03.');
+  const [failedSha, setFailedSha] = useState('');
+  const [incidentSummary, setIncidentSummary] = useState('');
   const [postMortem, setPostMortem] = useState(null);
   const [generatingReport, setGeneratingReport] = useState(false);
 
   // C. Webhook Dispatcher
-  const [webhookUrl, setWebhookUrl] = useState('https://discord.com/api/webhooks/12345/abcdef');
+  const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookType, setWebhookType] = useState('discord');
   const [webhookMsg, setWebhookMsg] = useState(null);
   const [sendingWebhook, setSendingWebhook] = useState(false);
@@ -43,8 +39,8 @@ sqlite3.OperationalError: table projects has no column named service_url`);
     setGeneratingReport(true);
     try {
       const res = await api.generateIncidentReport(activeProjectId, {
-        title: incidentTitle,
-        summary: incidentSummary
+        failed_sha: failedSha,
+        symptoms: incidentSummary
       });
       setPostMortem(res);
     } catch (err) {
@@ -58,13 +54,8 @@ sqlite3.OperationalError: table projects has no column named service_url`);
     setSendingWebhook(true);
     setWebhookMsg(null);
     try {
-      const res = await api.testWebhook(webhookUrl, webhookType, {
-        project: selectedProject?.name || 'Payments API',
-        status: 'FAILED',
-        commit_sha: 'f1996ee42',
-        message: 'Deployment failed at Stage 04 (Trivy Gate). Rollback readiness verified.'
-      });
-      setWebhookMsg({ type: 'success', text: `✓ Webhook dispatched successfully! HTTP ${res.status_code || 200}` });
+      const res = await api.testWebhook(activeProjectId, webhookUrl, webhookType);
+      setWebhookMsg({ type: res.success ? 'success' : 'error', text: res.message });
     } catch (err) {
       setWebhookMsg({ type: 'error', text: `✕ Webhook blocked: ${err.message}` });
     } finally {
@@ -110,14 +101,14 @@ sqlite3.OperationalError: table projects has no column named service_url`);
         {diagnosis && (
           <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <span className="badge-status badge-failed">{diagnosis.category || 'TEST_FAILURE'}</span>
+              <span className="badge-status badge-failed">{diagnosis.error_category || 'Analysis'}</span>
               <strong style={{ fontSize: '0.9rem', color: '#fff' }}>Root Cause Identified</strong>
             </div>
             <p style={{ fontSize: '0.82rem', color: '#fca5a5', marginBottom: '0.65rem' }}>
-              {diagnosis.problem || diagnosis.summary || 'AssertionError in test suite'}
+              {diagnosis.root_cause || diagnosis.summary}
             </p>
             <div style={{ padding: '0.65rem 0.85rem', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', fontSize: '0.78rem', color: '#a7f3d0' }}>
-              <strong>Suggested Fix:</strong> {diagnosis.suggested_action || 'Check database migrations and ensure column exists in schema.'}
+              <strong>Suggested Fix:</strong> {diagnosis.suggested_fix}
             </div>
           </div>
         )}
@@ -137,12 +128,7 @@ sqlite3.OperationalError: table projects has no column named service_url`);
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
           <div>
             <label className="form-label">Incident Title</label>
-            <input
-              type="text"
-              className="form-input"
-              value={incidentTitle}
-              onChange={(e) => setIncidentTitle(e.target.value)}
-            />
+            <input type="text" className="form-input" placeholder="Failed release commit SHA" value={failedSha} onChange={(e) => setFailedSha(e.target.value)} />
           </div>
           <div>
             <label className="form-label">Brief Outage Summary</label>
@@ -179,7 +165,7 @@ sqlite3.OperationalError: table projects has no column named service_url`);
               </button>
             </div>
             <pre style={{ fontSize: '0.78rem', color: '#cbd5e1', whiteSpace: 'pre-wrap', fontFamily: 'var(--font-mono)', lineHeight: 1.6 }}>
-              {postMortem.markdown || JSON.stringify(postMortem, null, 2)}
+              {postMortem.markdown_report || JSON.stringify(postMortem, null, 2)}
             </pre>
           </div>
         )}

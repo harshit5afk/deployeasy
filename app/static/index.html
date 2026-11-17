@@ -1398,7 +1398,7 @@ footer {
       </button>
       <div id="status-pill" class="status-pill">
         <span class="pulse-dot"></span>
-        <span id="status-text">99.97% Operational</span>
+        <span id="status-text">Service status not configured</span>
       </div>
       <a href="/" class="btn-header-ghost" title="Landing Page / Product Overview">
         <span>Home</span>
@@ -1451,8 +1451,8 @@ footer {
           <span class="stat-label">Deploy Success Rate</span>
           <div class="stat-icon">🎯</div>
         </div>
-        <div class="stat-value" id="kpi-success-rate">100%</div>
-        <div class="stat-progress-bar"><div class="stat-progress-fill" style="width: 100%; background: var(--cyan);"></div></div>
+        <div class="stat-value" id="kpi-success-rate">—</div>
+        <div class="stat-progress-bar"><div class="stat-progress-fill" style="width: 0%; background: var(--cyan);"></div></div>
         <div class="stat-subtext">Across recent pipeline runs</div>
       </div>
 
@@ -1482,21 +1482,21 @@ footer {
       <div class="telemetry-card">
         <div class="telemetry-header">
           <div class="telemetry-title">⚡ Process & Runtime Telemetry</div>
-          <span class="badge-status badge-success">LIVE STREAMING</span>
+          <span class="badge-status badge-warning">APP PROCESS DATA</span>
         </div>
 
         <div class="hardware-metrics">
           <div class="hw-item">
             <div class="hw-label">CPU Usage</div>
-            <div class="hw-val" style="color: #60a5fa;">34%</div>
-            <div class="hw-bar"><div class="hw-fill" style="width: 34%; background: #3b82f6;"></div></div>
-            <div class="hw-sub">8 cores · 3.2GHz</div>
+            <div class="hw-val" style="color: #60a5fa;">Not reported</div>
+            <div class="hw-bar"><div class="hw-fill" style="width: 0%; background: #3b82f6;"></div></div>
+            <div class="hw-sub">No host metrics integration</div>
           </div>
           <div class="hw-item">
             <div class="hw-label">Memory</div>
-            <div class="hw-val" style="color: #a78bfa;">12.4GB</div>
-            <div class="hw-bar"><div class="hw-fill" style="width: 77%; background: #8b5cf6;"></div></div>
-            <div class="hw-sub">12.4 / 16 GB</div>
+            <div class="hw-val" style="color: #a78bfa;">Not reported</div>
+            <div class="hw-bar"><div class="hw-fill" style="width: 0%; background: #8b5cf6;"></div></div>
+            <div class="hw-sub">No host metrics integration</div>
           </div>
           <div class="hw-item">
             <div class="hw-label">Process Uptime</div>
@@ -1526,29 +1526,29 @@ footer {
       <div class="telemetry-card">
         <div class="telemetry-header">
           <div class="telemetry-title">📊 HTTP Request Distribution</div>
-          <span style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--text-muted);">1.2M total</span>
+          <span style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--text-muted);">Not collected</span>
         </div>
 
         <div class="dist-bars">
           <div class="dist-item">
             <span style="color: #34d399; font-weight: 600;">● 2xx Success</span>
-            <div class="dist-bar-wrap"><div class="dist-bar-fill" style="width: 78%; background: #10b981;"></div></div>
-            <span style="font-family: var(--font-mono); color: var(--text-dim);">78%</span>
+            <div class="dist-bar-wrap"><div class="dist-bar-fill" style="width: 0%; background: #10b981;"></div></div>
+            <span style="font-family: var(--font-mono); color: var(--text-dim);">—</span>
           </div>
           <div class="dist-item">
             <span style="color: #60a5fa; font-weight: 600;">● 3xx Redirect</span>
-            <div class="dist-bar-wrap"><div class="dist-bar-fill" style="width: 12%; background: #3b82f6;"></div></div>
-            <span style="font-family: var(--font-mono); color: var(--text-dim);">12%</span>
+            <div class="dist-bar-wrap"><div class="dist-bar-fill" style="width: 0%; background: #3b82f6;"></div></div>
+            <span style="font-family: var(--font-mono); color: var(--text-dim);">—</span>
           </div>
           <div class="dist-item">
             <span style="color: #fbbf24; font-weight: 600;">● 4xx Client Err</span>
-            <div class="dist-bar-wrap"><div class="dist-bar-fill" style="width: 7%; background: #f59e0b;"></div></div>
-            <span style="font-family: var(--font-mono); color: var(--text-dim);">7%</span>
+            <div class="dist-bar-wrap"><div class="dist-bar-fill" style="width: 0%; background: #f59e0b;"></div></div>
+            <span style="font-family: var(--font-mono); color: var(--text-dim);">—</span>
           </div>
           <div class="dist-item">
             <span style="color: #f87171; font-weight: 600;">● 5xx Server Err</span>
-            <div class="dist-bar-wrap"><div class="dist-bar-fill" style="width: 3%; background: #ef4444;"></div></div>
-            <span style="font-family: var(--font-mono); color: var(--text-dim);">3%</span>
+            <div class="dist-bar-wrap"><div class="dist-bar-fill" style="width: 0%; background: #ef4444;"></div></div>
+            <span style="font-family: var(--font-mono); color: var(--text-dim);">—</span>
           </div>
         </div>
 
@@ -1556,11 +1556,11 @@ footer {
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <span style="font-size: 1.1rem;">🛡️</span>
             <div>
-              <div style="font-size: 0.8rem; font-weight: 700; color: #34d399;">Zero Silent Downtime</div>
-              <div style="font-size: 0.72rem; color: var(--text-dim);">Automated live smoke tests on /version</div>
+              <div style="font-size: 0.8rem; font-weight: 700; color: #34d399;">Release Verification</div>
+              <div style="font-size: 0.72rem; color: var(--text-dim);">Configured pipelines check /version and /health</div>
             </div>
           </div>
-          <span style="font-size: 0.85rem; font-family: var(--font-mono); font-weight: 700; color: #34d399;">99.97%</span>
+          <span style="font-size: 0.85rem; font-family: var(--font-mono); color: var(--text-dim);">No uptime SLO</span>
         </div>
       </div>
     </div>
@@ -1569,14 +1569,14 @@ footer {
     <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
       <div style="display: flex; align-items: center; gap: 1.25rem;">
         <div style="width: 54px; height: 54px; border-radius: 50%; border: 4px solid #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; font-family: var(--font-mono); color: #fff;" id="quick-gauge">
-          <span id="quick-score">100</span>
+          <span id="quick-score">—</span>
         </div>
         <div>
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <span style="font-weight: 700;">Pre-Deploy Readiness:</span>
-            <span class="badge-status badge-success" id="quick-tier">Ready for Production</span>
+            <span class="badge-status badge-warning" id="quick-tier">Awaiting project</span>
           </div>
-          <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem;" id="quick-rec">All 5 critical release gates passed. Image scanned with 0 critical vulnerabilities.</p>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem;" id="quick-rec">Readiness is calculated from the selected project's recorded data.</p>
         </div>
       </div>
       <button class="btn-sm-primary" onclick="switchTab('readiness')">View Scorecard Audit →</button>
@@ -1586,7 +1586,7 @@ footer {
     <div class="section-header">
       <div>
         <div class="section-title">Recent Deployment Activity</div>
-        <div class="section-subtitle">Real-time status synced with database and GitHub Actions</div>
+        <div class="section-subtitle">Release records currently stored for this workspace</div>
       </div>
       <button class="btn-sm-primary" onclick="openDeployModal()">+ Trigger Deploy</button>
     </div>
@@ -1692,7 +1692,7 @@ footer {
           <div class="scorecard-title">
             <span>⭕</span> Code Maturity Scorecard
           </div>
-          <span class="badge-status badge-success" id="full-tier">Elite</span>
+          <span class="badge-status badge-warning" id="full-tier">Awaiting project</span>
         </div>
 
         <div class="donut-wrapper" id="full-gauge">
@@ -1702,13 +1702,13 @@ footer {
             <circle class="donut-seg-coral" cx="80" cy="80" r="62" stroke-dasharray="70 390" stroke-dashoffset="-320"/>
           </svg>
           <div class="donut-center">
-            <div class="donut-number" id="full-score">100</div>
+            <div class="donut-number" id="full-score">—</div>
             <div class="donut-label">Readiness</div>
           </div>
         </div>
 
         <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-bottom: 1rem;" id="full-rec">
-          All 5 critical release gates passed. Ready for zero-downtime deployment.
+          Readiness is calculated from the selected project's currently recorded checks.
         </p>
 
         <div class="scorecard-legend">
@@ -1790,18 +1790,18 @@ footer {
 APP_VERSION=1.0.0
 DATABASE_URL=sqlite:///./deployeasy.db
 SERVICE_URL=https://deployeasy.onrender.com
-RENDER_DEPLOY_HOOK_URL=https://api.render.com/deploy/srv-placeholder12345
+RENDER_DEPLOY_HOOK_URL=replace-with-your-deploy-hook-url
 GITHUB_REPO=harshit5afk/deployeasy
-GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
+GITHUB_TOKEN=replace-with-your-token</textarea>
       </div>
 
       <div class="console-output">
         <div class="output-header">
-          <span class="badge-status badge-success" id="env-badge-status">VALID READY</span>
-          <span style="font-size: 0.78rem; color: var(--text-dim);" id="env-eval-count">7 variables</span>
+          <span class="badge-status badge-warning" id="env-badge-status">NOT CHECKED</span>
+          <span style="font-size: 0.78rem; color: var(--text-dim);" id="env-eval-count">0 variables</span>
         </div>
         <div id="env-report-output" style="font-size: 0.82rem; overflow-y: auto;">
-          <p style="color: var(--text-dim);">Click 'Validate Configuration' to evaluate.</p>
+          <p style="color: var(--text-dim);">Use placeholder values only. Do not paste production secrets here.</p>
         </div>
       </div>
     </div>
@@ -1824,7 +1824,7 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
           <span class="stat-label">Process Uptime</span>
           <div class="stat-icon">🕒</div>
         </div>
-        <div class="stat-value" id="mon-uptime">0s</div>
+        <div class="stat-value" id="mon-uptime">—</div>
         <div class="stat-subtext">Current process instance</div>
       </div>
 
@@ -1833,7 +1833,7 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
           <span class="stat-label">Requests Served</span>
           <div class="stat-icon">📊</div>
         </div>
-        <div class="stat-value" id="mon-requests">0</div>
+        <div class="stat-value" id="mon-requests">—</div>
         <div class="stat-subtext">Total HTTP requests handled</div>
       </div>
 
@@ -1842,7 +1842,7 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
           <span class="stat-label">Latest Latency</span>
           <div class="stat-icon">⚡</div>
         </div>
-        <div class="stat-value" id="mon-latency">12ms</div>
+        <div class="stat-value" id="mon-latency">—</div>
         <div class="stat-subtext">Health probe response time</div>
       </div>
     </div>
@@ -1880,41 +1880,9 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
       </div>
     </div>
 
-    <!-- Moole.ai Severity Summary Cards -->
-    <div class="moole-summary-banner">
-      <div class="moole-sev-card">
-        <div class="moole-sev-icon sev-crit-icon">🚨</div>
-        <div>
-          <div class="moole-sev-title">Critical</div>
-          <div class="moole-sev-count" style="color: #f87171;">0</div>
-        </div>
-      </div>
-      <div class="moole-sev-card">
-        <div class="moole-sev-icon sev-high-icon">⚠️</div>
-        <div>
-          <div class="moole-sev-title">High</div>
-          <div class="moole-sev-count" style="color: #fbbf24;">2</div>
-        </div>
-      </div>
-      <div class="moole-sev-card">
-        <div class="moole-sev-icon sev-med-icon">🛡️</div>
-        <div>
-          <div class="moole-sev-title">Medium</div>
-          <div class="moole-sev-count" style="color: #34d399;">5</div>
-        </div>
-      </div>
-      <div class="moole-sev-card">
-        <div class="moole-sev-icon sev-low-icon">ℹ️</div>
-        <div>
-          <div class="moole-sev-title">Low</div>
-          <div class="moole-sev-count" style="color: #60a5fa;">8</div>
-        </div>
-      </div>
-    </div>
-
     <div class="section-header">
-      <div class="section-title">Repository Security Audit</div>
-      <div class="section-subtitle">Static code & container analysis results</div>
+      <div class="section-title">Project Security Scans</div>
+      <div class="section-subtitle">Recorded scan reports for the selected project. Empty results mean no report has been ingested yet.</div>
     </div>
 
     <div class="data-table-container">
@@ -1931,17 +1899,8 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
             <th>Last Scan</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td style="font-weight: 700;">harshit5afk/deployeasy</td>
-            <td><span style="color: #34d399; font-weight: 700;">0</span></td>
-            <td><span style="color: #fbbf24; font-weight: 700;">2</span></td>
-            <td><span style="color: #60a5fa; font-weight: 700;">5</span></td>
-            <td><span style="color: var(--text-dim); font-weight: 700;">8</span></td>
-            <td><span class="code-sha">Dockerfile</span></td>
-            <td><span class="badge-status badge-success">GitHub Actions</span></td>
-            <td>Just now</td>
-          </tr>
+        <tbody id="security-summary-table">
+          <tr><td colspan="8" style="text-align: center; color: var(--text-dim); padding: 1.5rem;">No scan summary loaded.</td></tr>
         </tbody>
       </table>
     </div>
@@ -1957,7 +1916,7 @@ GITHUB_TOKEN=ghp_exampleTokenSecret999</textarea>
     <div class="section-header">
       <div>
         <div class="section-title">Cloud Infrastructure & CI/CD Cost Center</div>
-        <div class="section-subtitle">Real-time spend projection, GitHub Actions runner quotas, GHCR image storage & FinOps recommendations</div>
+        <div class="section-subtitle">Illustrative cost estimate based on configured assumptions; not provider billing data</div>
       </div>
       <button class="btn-sm-primary" onclick="loadCostEstimator()">⚡ Refresh Cost Breakdown</button>
     </div>
@@ -2509,18 +2468,19 @@ async function loadCurrentUser() {
 }
 
 async function logoutUser() {
-  if (!confirm('Log out of DeployEasy?')) return;
   try {
     await fetch('/api/auth/logout', {
       method: 'POST',
-      headers: getAuthHeaders(),
       credentials: 'same-origin'
     });
   } catch (err) {
     console.warn('Logout network error:', err);
   }
-  localStorage.removeItem('deployeasy_user');
-  localStorage.removeItem('deployeasy_token');
+  localStorage.clear();
+  sessionStorage.clear();
+  document.cookie = 'deployeasy_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+  document.cookie = 'deployeasy_csrf=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+  document.cookie = 'deployeasy_mode=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
   window.location.href = '/login';
 }
 
@@ -2938,7 +2898,7 @@ async function loadSecurityCenter() {
         <div class="security-card" style="grid-column: 1 / -1; padding: 2.25rem 1.5rem; text-align: center;">
           <div style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 0.4rem;">No CI/CD Scan Reports Yet</div>
           <div style="font-size: 0.88rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 1.25rem; line-height: 1.5;">
-            No vulnerability or secret scan reports recorded yet for this project. Scan results populate automatically when Trivy container scans or Gitleaks audits run in your CI/CD pipeline.
+            No vulnerability or secret scan reports are recorded for this project yet. CI scan output is not currently ingested automatically.
           </div>
           <span class="badge-status badge-warning">Awaiting Pipeline Telemetry</span>
         </div>
@@ -3064,8 +3024,8 @@ async function refreshAllData() {
     $('kpi-avg-duration').textContent = `${overview.avg_deploy_time_seconds}s`;
     
     const totalDeploys = overview.successful_deployments + overview.failed_deployments;
-    const rate = totalDeploys > 0 ? Math.round((overview.successful_deployments / totalDeploys) * 100) : 100;
-    $('kpi-success-rate').textContent = `${rate}%`;
+    const rate = totalDeploys > 0 ? Math.round((overview.successful_deployments / totalDeploys) * 100) : null;
+    $('kpi-success-rate').textContent = rate === null ? '—' : `${rate}%`;
 
     const uptimeSec = Math.floor(overview.process_uptime_seconds);
     const m = Math.floor(uptimeSec / 60);
