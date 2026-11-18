@@ -99,6 +99,7 @@ export const api = {
 
   // Security
   getSecurityScans: (projectId) => apiFetch(`/api/projects/${projectId}/security`),
+  triggerSecurityScan: (projectId) => apiFetch(`/api/projects/${projectId}/security/scan`, { method: 'POST' }),
 
   // Readiness
   getReadinessScore: (projectId) => apiFetch(`/api/projects/${projectId}/readiness`),

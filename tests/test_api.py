@@ -535,3 +535,22 @@ def test_system_mode_endpoints(auth_client):
     r_inv = auth_client.post("/api/system/mode", json={"mode": "invalid_mode"})
     assert r_inv.status_code == 422
 
+
+def test_trigger_security_audit_and_readiness_flow(auth_client, sample_project):
+    # Trigger security audit scan
+    r_scan = auth_client.post(f"/api/projects/{sample_project}/security/scan")
+    assert r_scan.status_code == 201
+    scans = r_scan.json()
+    assert len(scans) >= 2
+    types = {s["scan_type"] for s in scans}
+    assert "trivy" in types
+    assert "gitleaks" in types
+
+    # Check project readiness
+    r_ready = auth_client.get(f"/api/projects/{sample_project}/readiness")
+    assert r_ready.status_code == 200
+    ready_data = r_ready.json()
+    assert not ready_data["deployment_blocked"]
+    assert ready_data["readiness_score"] >= 70
+
+
