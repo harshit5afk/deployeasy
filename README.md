@@ -178,6 +178,7 @@ Server will be running at: **`http://localhost:8080`**
 | `GET` | `/api/projects` | List connected projects scoped to authenticated user | Yes |
 | `POST`| `/api/projects` | Register a new repository and deployment hook | Yes |
 | `POST`| `/api/github/repository-check` | Check repository access, default branch, and required workflows | Yes |
+| `GET` | `/api/admin/dashboard` | Admin-only platform, users, repositories, deployments, and integration overview | Admin |
 | `GET` | `/api/projects/{id}/deployments` | Retrieve deployment history with status and duration | Yes |
 | `POST`| `/api/deployments/trigger` | Dispatch a SHA-pinned GitHub Actions release | Yes |
 | `POST`| `/api/deployments/rollback` | Dispatch a SHA-pinned rollback and record workflow result | Yes |

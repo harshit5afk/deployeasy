@@ -110,10 +110,6 @@ export function Navbar({ onOpenNewProject }) {
                 New Project
               </button>
             )}
-            <div className="status-pill">
-              <span className="pulse-dot"></span>
-              <span>99.97% Operational</span>
-            </div>
             <Link to="/" className="btn-ghost" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
               Home
             </Link>

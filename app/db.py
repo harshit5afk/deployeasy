@@ -341,6 +341,12 @@ def init_db():
                 )
                 db.add(admin_user)
                 db.commit()
+            elif admin_user.role != "admin":
+                from .auth import hash_password
+
+                admin_user.role = "admin"
+                admin_user.password_hash = hash_password(config.DEPLOYEASY_ADMIN_PASSWORD)
+                db.commit()
 
         # Only seed demo fixtures if explicitly configured via environment variable
         if config.DEPLOYEASY_DEMO_MODE:

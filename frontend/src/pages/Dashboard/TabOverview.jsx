@@ -16,7 +16,7 @@ export function TabOverview({ overview, projects, onSwitchTab }) {
       <MetricCard label="Average Deploy Time" value={avg == null ? '—' : `${avg}s`} subtext="Recorded deployment durations" color="amber" />
     </div>
     <div className="telemetry-card" style={{ marginTop: '1rem' }}>
-      <div className="telemetry-header"><div className="telemetry-title">Application telemetry</div><span>{overview?.version || 'Version unavailable'} · {overview?.git_sha || 'SHA unavailable'}</span></div>
+      <div className="telemetry-header"><div className="telemetry-title">DeployEasy server telemetry</div><span>This is the dashboard server, not your connected repository's app · {overview?.version || 'Version unavailable'}</span></div>
       <div className="hardware-metrics-row">
         <div className="hw-tile"><div className="hw-tile-label">Process uptime</div><div className="hw-tile-val">{duration(uptime)}</div></div>
         <div className="hw-tile"><div className="hw-tile-label">Requests served</div><div className="hw-tile-val">{overview?.requests_served ?? '—'}</div></div>

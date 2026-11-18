@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { Navbar } from '../../components/Navbar';
 import { Footer } from '../../components/Footer';
 import { ModalNewProject } from '../../components/ModalNewProject';
@@ -11,10 +12,11 @@ import { TabSecurity } from './TabSecurity';
 import { TabFinOps } from './TabFinOps';
 import { TabDiagnostics } from './TabDiagnostics';
 import { TabConsole } from './TabConsole';
+import { AdminDashboard } from './AdminDashboard';
 import { api } from '../../api';
 
 export function DashboardPage() {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('projects');
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [overview, setOverview] = useState(null);
@@ -70,8 +72,15 @@ export function DashboardPage() {
       <Navbar onOpenNewProject={() => setIsModalOpen(true)} />
 
       <main>
+        {projects.length === 0 && (
+          <section className="telemetry-card" style={{ margin: '1rem auto 1.5rem', maxWidth: '900px', textAlign: 'center', padding: '2rem' }}>
+            <h1 style={{ marginBottom: '0.75rem' }}>Start with a GitHub repository</h1>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem' }}>Paste a repository link. DeployEasy will check the repository and required workflow files before showing deployment setup. No service telemetry is available until a project is connected and deployed.</p>
+            {currentUser?.role === 'demo' ? <p>Demo accounts are read-only. <Link to="/register">Create your account</Link> to connect a repository.</p> : <button className="btn-primary" onClick={() => setIsModalOpen(true)}>Connect GitHub Repository</button>}
+          </section>
+        )}
         {/* Navigation Tabs Bar with Chevrons (User requested horizontal scrollbar fix) */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+        {(projects.length > 0 || currentUser?.role === 'admin') && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
           <div className="nav-tabs-wrapper" style={{ maxWidth: '900px' }}>
             <button className="nav-scroll-btn" onClick={() => scrollTabs(-1)} title="Scroll Left">‹</button>
             <ul className="nav-tabs" ref={tabsListRef}>
@@ -85,10 +94,11 @@ export function DashboardPage() {
                   </button>
                 </li>
               ))}
+              {currentUser?.role === 'admin' && <li><button className={`nav-tab-btn ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => setActiveTab('admin')}>Admin</button></li>}
             </ul>
             <button className="nav-scroll-btn" onClick={() => scrollTabs(1)} title="Scroll Right">›</button>
           </div>
-        </div>
+        </div>}
 
         {currentUser?.role === 'demo' && <div className="env-banner">
           <div className="env-banner-left">
@@ -104,7 +114,7 @@ export function DashboardPage() {
         </div>}
 
         {/* Tab Contents */}
-        {activeTab === 'overview' && (
+        {projects.length > 0 && activeTab === 'overview' && (
           <TabOverview
             overview={overview}
             projects={projects}
@@ -112,7 +122,7 @@ export function DashboardPage() {
           />
         )}
 
-        {activeTab === 'projects' && (
+        {(projects.length === 0 || activeTab === 'projects') && (
           <TabProjects
             projects={projects}
             onRefreshProjects={loadData}
@@ -163,6 +173,8 @@ export function DashboardPage() {
         {activeTab === 'console' && (
           <TabConsole />
         )}
+
+        {activeTab === 'admin' && currentUser?.role === 'admin' && <AdminDashboard />}
       </main>
 
       <Footer />
@@ -173,6 +185,7 @@ export function DashboardPage() {
         onProjectCreated={(newProj) => {
           setProjects((prev) => [newProj, ...prev]);
           setSelectedProject(newProj);
+          setActiveTab('projects');
         }}
       />
     </>

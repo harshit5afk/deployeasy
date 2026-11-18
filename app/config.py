@@ -31,17 +31,17 @@ if not CORS_ORIGINS:
 SERVICE_URL = os.getenv("SERVICE_URL", "")
 RENDER_DEPLOY_HOOK_URL = os.getenv("RENDER_DEPLOY_HOOK_URL", "")
 
+# Security and Demo Flags
+ENVIRONMENT = os.getenv("ENVIRONMENT", os.getenv("DEPLOYEASY_ENV", "development")).lower()
+DEPLOYEASY_DEMO_MODE = os.getenv("DEPLOYEASY_DEMO_MODE", "false").lower() in ("true", "1", "yes")
+
 # Administrator Configuration (Zero Hardcoded Passwords in Production)
 DEPLOYEASY_ADMIN_USER = os.getenv("DEPLOYEASY_ADMIN_USER", "admin")
 DEPLOYEASY_ADMIN_EMAIL = os.getenv("DEPLOYEASY_ADMIN_EMAIL", "admin@deployeasy.local")
 DEPLOYEASY_ADMIN_PASSWORD = os.getenv(
     "DEPLOYEASY_ADMIN_PASSWORD",
-    "admin123456!" if os.getenv("TESTING") == "1" else "",
+    "" if ENVIRONMENT in ("production", "prod") else "admin123456!",
 )
-
-# Security and Demo Flags
-ENVIRONMENT = os.getenv("ENVIRONMENT", os.getenv("DEPLOYEASY_ENV", "development")).lower()
-DEPLOYEASY_DEMO_MODE = os.getenv("DEPLOYEASY_DEMO_MODE", "false").lower() in ("true", "1", "yes")
 
 _cookie_secure_env = os.getenv("COOKIE_SECURE")
 if _cookie_secure_env is not None:

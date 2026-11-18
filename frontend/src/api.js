@@ -61,6 +61,7 @@ export const api = {
 
   // System & Telemetry
   getOverview: () => apiFetch('/api/overview'),
+  getAdminDashboard: () => apiFetch('/api/admin/dashboard'),
   getSystemMode: () => apiFetch('/api/system/mode'),
   setSystemMode: (mode) => apiFetch('/api/system/mode', {
     method: 'POST',

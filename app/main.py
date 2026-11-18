@@ -593,7 +593,7 @@ def create_project(payload: ProjectCreate, user: CurrentUser, db: DbSession, csr
         branch=payload.branch,
         service_url=payload.service_url,
         deploy_hook_url=payload.deploy_hook_url,
-        status="operational",
+        status="not_deployed",
         owner_id=user.id,
     )
     db.add(project)
@@ -1152,6 +1152,49 @@ def test_webhook_integration(
 # -----------------------------------------------------------------------------
 # High-level System Overview (Owner-Scoped & Non-Leaking)
 # -----------------------------------------------------------------------------
+
+@app.get("/api/admin/dashboard")
+def get_admin_dashboard(user: CurrentUser, db: DbSession):
+    """Return safe platform-wide management data to administrators only."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Administrator access required.")
+
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    projects = db.query(Project).order_by(Project.created_at.desc()).all()
+    deployments = db.query(Deployment).order_by(Deployment.created_at.desc()).limit(12).all()
+    successful = db.query(Deployment).filter(Deployment.status.in_(("success", "rolled_back"))).count()
+    failed = db.query(Deployment).filter(Deployment.status == "failure").count()
+    return {
+        "summary": {
+            "users": len(users), "projects": len(projects),
+            "deployments": db.query(Deployment).count(),
+            "successful_deployments": successful, "failed_deployments": failed,
+        },
+        "integrations": {
+            "github_token_configured": bool(config.GITHUB_TOKEN),
+            "deployment_callback_configured": bool(config.DEPLOYEASY_CALLBACK_SECRET),
+            "github_webhook_configured": bool(config.GITHUB_WEBHOOK_SECRET),
+            "environment": config.ENVIRONMENT,
+        },
+        "users": [{
+            "id": item.id, "username": item.username, "email": item.email,
+            "role": item.role, "is_active": item.is_active, "created_at": item.created_at,
+            "project_count": len(item.projects),
+        } for item in users],
+        "projects": [{
+            "id": item.id, "name": item.name, "repo_name": item.repo_name,
+            "branch": item.branch, "status": item.status,
+            "owner": item.owner.username if item.owner else "Unassigned",
+            "service_configured": bool(item.service_url),
+            "deploy_hook_configured": bool(item.deploy_hook_url),
+        } for item in projects],
+        "recent_deployments": [{
+            "id": item.id, "project_name": item.project.name,
+            "repo_name": item.project.repo_name, "commit_sha": item.commit_sha,
+            "status": item.status, "trigger_type": item.trigger_type,
+            "created_at": item.created_at,
+        } for item in deployments],
+    }
 
 @app.get("/api/overview", response_model=OverviewStats)
 def get_system_overview(db: DbSession, user: CurrentUser):
