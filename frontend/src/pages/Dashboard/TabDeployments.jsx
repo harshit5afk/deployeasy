@@ -17,9 +17,9 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
 
   const activeProjectId = selectedProject?.id || (projects && projects[0]?.id);
 
-  const loadDeployments = async (pId) => {
+  const loadDeployments = async (pId, silent = false) => {
     if (!pId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const data = await api.getDeployments(pId);
       setDeployments(data);
@@ -33,7 +33,7 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -41,6 +41,12 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
     if (activeProjectId) {
       loadDeployments(activeProjectId);
     }
+  }, [activeProjectId]);
+
+  useEffect(() => {
+    if (!activeProjectId) return undefined;
+    const timer = setInterval(() => loadDeployments(activeProjectId, true), 8000);
+    return () => clearInterval(timer);
   }, [activeProjectId]);
 
   const handleTriggerDeploy = async () => {
@@ -168,6 +174,10 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
           </span>
         </div>
 
+        {deployments.some((item) => ['queued', 'deploying'].includes(item.status)) && <div style={{ padding: '0.65rem 1.25rem', color: '#fbbf24', fontSize: '0.82rem' }}>
+          Deployment in progress · refreshing status from GitHub every 8 seconds
+        </div>}
+
         <table className="custom-table">
           <thead>
             <tr>
@@ -176,19 +186,20 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
               <th>Status</th>
               <th>Duration</th>
               <th>Deployed At</th>
+              <th>Workflow</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                   Loading deployments...
                 </td>
               </tr>
             ) : deployments.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                   No deployment history found. Trigger your first release above!
                 </td>
               </tr>
@@ -210,7 +221,17 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
                   <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     {d.created_at ? new Date(d.created_at).toLocaleTimeString() : 'Recent'}
                   </td>
+                  <td>
+                    {d.workflow_run_id && (() => {
+                      const project = projects.find((item) => item.id === d.project_id);
+                      return project ? <a href={`https://github.com/${project.repo_name}/actions/runs/${d.workflow_run_id}`} target="_blank" rel="noreferrer">View Actions run</a> : 'GitHub Actions';
+                    })()}
+                  </td>
                   <td style={{ textAlign: 'right' }}>
+                    <details style={{ textAlign: 'left', marginBottom: d.status === 'success' ? '0.4rem' : 0 }}>
+                      <summary style={{ cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.75rem' }}>Activity</summary>
+                      <pre style={{ whiteSpace: 'pre-wrap', maxWidth: '340px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{d.logs_summary || 'No activity details recorded yet.'}</pre>
+                    </details>
                     {d.status === 'success' && (
                       <button
                         onClick={() => handleRollback(d.commit_sha)}

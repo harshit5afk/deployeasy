@@ -94,6 +94,7 @@ class DeploymentResponse(BaseModel):
     status: str
     duration_seconds: int
     logs_summary: str
+    workflow_run_id: str | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

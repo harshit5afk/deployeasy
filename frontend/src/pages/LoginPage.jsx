@@ -51,7 +51,7 @@ export function LoginPage() {
               </svg>
             </div>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', marginBottom: '0.35rem' }}>
-              Sign In to DeployEasy
+              Log In to DeployEasy
             </h1>
             <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
               Developer-First Cloud CI/CD & Deployment Observatory
@@ -95,7 +95,7 @@ export function LoginPage() {
               className="btn-primary"
               style={{ width: '100%', justifyContent: 'center', padding: '0.75rem', marginTop: '0.5rem', fontSize: '0.95rem' }}
             >
-              {loading ? 'Authenticating...' : 'Sign In'}
+              {loading ? 'Authenticating...' : 'Log In'}
             </button>
           </form>
 

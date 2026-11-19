@@ -898,7 +898,7 @@ async def receive_deployment_result(request: Request, db: DbSession):
 
     if deployment_id < 1 or not re.fullmatch(r"[0-9a-f]{40}", target_sha):
         raise HTTPException(status_code=400, detail="Invalid deployment ID or commit SHA.")
-    if not run_id.isdigit() or result not in {"success", "failure"} or not repository:
+    if not run_id.isdigit() or result not in {"queued", "in_progress", "success", "failure"} or not repository:
         raise HTTPException(status_code=400, detail="Invalid workflow run metadata.")
 
     dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
@@ -911,7 +911,14 @@ async def receive_deployment_result(request: Request, db: DbSession):
         raise HTTPException(status_code=409, detail="Callback SHA does not match this deployment.")
     if dep.workflow_run_id and dep.workflow_run_id != run_id:
         raise HTTPException(status_code=409, detail="A different workflow run is already linked to this deployment.")
-    final_status = ("rolled_back" if dep.trigger_type == "rollback" else "success") if result == "success" else "failure"
+    final_status = (
+        ("rolled_back" if dep.trigger_type == "rollback" else "success") if result == "success"
+        else "failure" if result == "failure"
+        else "queued" if result == "queued"
+        else "deploying"
+    )
+    if dep.status in {"success", "failure", "rolled_back"} and result in {"queued", "in_progress"}:
+        return {"updated": False, "status": dep.status, "workflow_run_id": dep.workflow_run_id}
     if dep.workflow_run_id == run_id and dep.status == final_status:
         return {"updated": False, "status": dep.status, "workflow_run_id": run_id}
     if dep.status in {"success", "failure", "rolled_back"} and dep.workflow_run_id:
@@ -919,7 +926,7 @@ async def receive_deployment_result(request: Request, db: DbSession):
 
     dep.status = final_status
     dep.workflow_run_id = run_id
-    dep.logs_summary = (dep.logs_summary or "") + f"\nGitHub Actions run {run_id} completed with result: {result}."
+    dep.logs_summary = (dep.logs_summary or "") + f"\nGitHub Actions run {run_id} status: {result}."
     db.commit()
     db.refresh(dep)
     return {"updated": True, "status": dep.status, "workflow_run_id": run_id}
@@ -955,38 +962,76 @@ async def receive_github_workflow_event(request: Request, db: DbSession):
     except (json.JSONDecodeError, AttributeError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid GitHub webhook payload.")
 
-    if body.get("action") != "completed" or run.get("event") != "push":
-        return {"ignored": True, "reason": "Only completed push workflow runs are recorded."}
-    if not str(workflow.get("path", "")).endswith("pipeline.yml"):
-        return {"ignored": True, "reason": "Workflow is not the DeployEasy pipeline."}
+    action = str(body.get("action", ""))
+    if action not in {"requested", "in_progress", "completed"}:
+        return {"ignored": True, "reason": "Unsupported workflow-run action."}
+    if run.get("event") not in {"push", "workflow_dispatch"}:
+        return {"ignored": True, "reason": "Only push and manual deployment workflows are tracked."}
+    workflow_path = str(workflow.get("path", ""))
+    if not workflow_path.endswith(("pipeline.yml", "rollback.yml")):
+        return {"ignored": True, "reason": "Workflow is not a DeployEasy release workflow."}
     if not repository or not run_id.isdigit() or not re.fullmatch(r"[0-9a-f]{40}", commit_sha):
         raise HTTPException(status_code=400, detail="Missing or invalid repository, run ID, or commit SHA.")
 
     project = db.query(Project).filter(func.lower(Project.repo_name) == repository).first()
     if not project or project.branch != branch:
         return {"ignored": True, "reason": "No configured project matches this repository and branch."}
-    duplicate = db.query(Deployment).filter(Deployment.workflow_run_id == run_id).first()
-    if duplicate:
-        return {"updated": False, "deployment_id": duplicate.id, "status": duplicate.status}
+    deployment = db.query(Deployment).filter(Deployment.workflow_run_id == run_id).first()
+    if not deployment:
+        event_type = str(run.get("event", ""))
+        expected_type = "rollback" if workflow_path.endswith("rollback.yml") else ("manual" if event_type == "workflow_dispatch" else "git_push")
+        pending = db.query(Deployment).filter(
+            Deployment.project_id == project.id,
+            Deployment.branch == branch,
+            Deployment.trigger_type == expected_type,
+            Deployment.status.in_(("queued", "deploying")),
+        )
+        if expected_type == "git_push":
+            pending = pending.filter(Deployment.commit_sha == commit_sha)
+        deployment = pending.order_by(Deployment.created_at.desc()).first()
 
-    conclusion = str(run.get("conclusion") or "failure").lower()
-    result = "success" if conclusion == "success" else "failure"
+    if not deployment:
+        event_type = str(run.get("event", ""))
+        trigger_type = "rollback" if workflow_path.endswith("rollback.yml") else ("manual" if event_type == "workflow_dispatch" else "git_push")
+        deployment = Deployment(
+            project_id=project.id, commit_sha=commit_sha, branch=branch,
+            trigger_type=trigger_type, status="queued", duration_seconds=0,
+            logs_summary="GitHub Actions workflow queued.",
+        )
+        db.add(deployment)
+
+    run_status = "queued" if action == "requested" else "deploying"
+    conclusion = str(run.get("conclusion") or "").lower()
+    if action == "completed":
+        run_status = "rolled_back" if conclusion == "success" and deployment.trigger_type == "rollback" else ("success" if conclusion == "success" else "failure")
+    previous_status = deployment.status
+    deployment.status = run_status
+    deployment.workflow_run_id = run_id
+    run_url = str(run.get("html_url", ""))
+    status_note = f"GitHub Actions: {action}"
+    if action == "completed":
+        status_note += f" ({conclusion or 'failure'})"
+        if run_url:
+            status_note += f" — {run_url}"
+    if previous_status != run_status or action == "completed":
+        deployment.logs_summary = (deployment.logs_summary or "") + f"\n{status_note}."
+
+    started = run.get("run_started_at")
+    completed_at = run.get("updated_at")
+    if action == "completed" and started and completed_at:
+        try:
+            started_at = datetime.fromisoformat(str(started).replace("Z", "+00:00"))
+            ended_at = datetime.fromisoformat(str(completed_at).replace("Z", "+00:00"))
+            deployment.duration_seconds = max(0, int((ended_at - started_at).total_seconds()))
+        except ValueError:
+            pass
+
     head_commit = run.get("head_commit") or {}
-    dep = Deployment(
-        project_id=project.id,
-        commit_sha=commit_sha,
-        commit_message=str(head_commit.get("message", ""))[:255],
-        branch=branch,
-        trigger_type="git_push",
-        status=result,
-        duration_seconds=0,
-        workflow_run_id=run_id,
-        logs_summary=f"GitHub Actions pipeline run {run_id} completed: {conclusion}.",
-    )
-    db.add(dep)
+    if not deployment.commit_message and head_commit.get("message"):
+        deployment.commit_message = str(head_commit["message"])[:255]
     db.commit()
-    db.refresh(dep)
-    return {"updated": True, "deployment_id": dep.id, "status": dep.status}
+    db.refresh(deployment)
+    return {"updated": True, "deployment_id": deployment.id, "status": deployment.status, "workflow_run_id": run_id}
 
 
 # -----------------------------------------------------------------------------
