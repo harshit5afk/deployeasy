@@ -15,7 +15,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
-COPY --from=frontend-build /app/app/static/dist ./app/static/dist
+COPY --from=frontend-build /app/static/dist ./app/static/dist
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
 
