@@ -40,7 +40,7 @@ DEPLOYEASY_ADMIN_USER = os.getenv("DEPLOYEASY_ADMIN_USER", "admin")
 DEPLOYEASY_ADMIN_EMAIL = os.getenv("DEPLOYEASY_ADMIN_EMAIL", "admin@deployeasy.local")
 DEPLOYEASY_ADMIN_PASSWORD = os.getenv(
     "DEPLOYEASY_ADMIN_PASSWORD",
-    "" if ENVIRONMENT in ("production", "prod") else "admin123456!",
+    "" if ENVIRONMENT in ("production", "prod") else "admin123",
 )
 
 _cookie_secure_env = os.getenv("COOKIE_SECURE")

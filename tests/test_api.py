@@ -51,7 +51,7 @@ def auth_client():
     """Fixture providing an authenticated admin client with active session and CSRF header."""
     reset_auth_rate_limits()
     admin_client = TestClient(app)
-    r = admin_client.post("/api/auth/login", json={"username": "admin", "password": "admin123456!"})
+    r = admin_client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
     csrf = r.json().get("csrf_token") or admin_client.cookies.get("deployeasy_csrf")
     admin_client.headers["X-CSRF-Token"] = csrf
     return admin_client
