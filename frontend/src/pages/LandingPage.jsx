@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 
 export function LandingPage() {
+  const { user } = useAuth();
   return (
     <>
       <div className="ambient-glow"></div>
@@ -36,19 +38,35 @@ export function LandingPage() {
             >
               ⚡ Try Live Demo Sandbox (Dummy Data) ↗
             </a>
-            <Link
-              to="/login"
-              className="btn-primary"
-              style={{
-                padding: '0.85rem 1.6rem',
-                fontSize: '0.95rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-              }}
-            >
-              Sign In 🔑
-            </Link>
+            {user ? (
+              <Link
+                to="/dashboard"
+                className="btn-primary"
+                style={{
+                  padding: '0.85rem 1.6rem',
+                  fontSize: '0.95rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                }}
+              >
+                Dashboard →
+              </Link>
+            ) : (
+              <Link
+                to="/register"
+                className="btn-primary"
+                style={{
+                  padding: '0.85rem 1.6rem',
+                  fontSize: '0.95rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                }}
+              >
+                Sign Up 🚀
+              </Link>
+            )}
             <a
               href="https://github.com/harshit5afk/deployeasy"
               target="_blank"
