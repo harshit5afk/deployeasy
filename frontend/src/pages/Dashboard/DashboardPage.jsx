@@ -27,6 +27,7 @@ export function DashboardPage() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [overview, setOverview] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState(null);
   const tabsListRef = useRef(null);
 
   const tabs = [
@@ -80,17 +81,27 @@ export function DashboardPage() {
     }
   };
 
+  const openNewProject = () => {
+    setProjectToEdit(null);
+    setIsModalOpen(true);
+  };
+
+  const openProjectSettings = (project) => {
+    setProjectToEdit(project);
+    setIsModalOpen(true);
+  };
+
   return (
     <>
       <div className="ambient-glow"></div>
-      <Navbar onOpenNewProject={isAdmin ? null : () => setIsModalOpen(true)} />
+      <Navbar onOpenNewProject={isAdmin ? null : openNewProject} />
 
       <main>
         {!isAdmin && projects.length === 0 && (
           <section className="telemetry-card" style={{ margin: '1rem auto 1.5rem', maxWidth: '900px', textAlign: 'center', padding: '2rem' }}>
             <h1 style={{ marginBottom: '0.75rem' }}>Start with a GitHub repository</h1>
             <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem' }}>Paste a repository link. DeployEasy will check the repository and required workflow files before showing deployment setup. No service telemetry is available until a project is connected and deployed.</p>
-            {activeUser?.role === 'demo' ? <p>Demo accounts are read-only. <Link to="/register">Create your account</Link> to connect a repository.</p> : <button className="btn-primary" onClick={() => setIsModalOpen(true)}>Connect GitHub Repository</button>}
+            {activeUser?.role === 'demo' ? <p>Demo accounts are read-only. <Link to="/register">Create your account</Link> to connect a repository.</p> : <button className="btn-primary" onClick={openNewProject}>Connect GitHub Repository</button>}
           </section>
         )}
 
@@ -160,7 +171,8 @@ export function DashboardPage() {
               <TabProjects
                 projects={projects}
                 onRefreshProjects={loadData}
-                onOpenNewProject={() => setIsModalOpen(true)}
+                onOpenNewProject={activeUser?.role === 'demo' ? undefined : openNewProject}
+                onEditProject={activeUser?.role === 'demo' ? undefined : openProjectSettings}
               />
             )}
 
@@ -216,11 +228,16 @@ export function DashboardPage() {
       {!isAdmin && (
         <ModalNewProject
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          project={projectToEdit}
+          onClose={() => { setIsModalOpen(false); setProjectToEdit(null); }}
           onProjectCreated={(newProj) => {
             setProjects((prev) => [newProj, ...prev]);
             setSelectedProject(newProj);
             setActiveTab('projects');
+          }}
+          onProjectUpdated={(updated) => {
+            setProjects((prev) => prev.map((project) => project.id === updated.id ? updated : project));
+            setSelectedProject(updated);
           }}
         />
       )}

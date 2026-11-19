@@ -78,6 +78,10 @@ export const api = {
     body: JSON.stringify(data)
   }),
   getProject: (id) => apiFetch(`/api/projects/${id}`),
+  updateProject: (id, data) => apiFetch(`/api/projects/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  }),
   checkGithubRepository: (repoUrl) => apiFetch('/api/github/repository-check', {
     method: 'POST', body: JSON.stringify({ repo_url: repoUrl })
   }),

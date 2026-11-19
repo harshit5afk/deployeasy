@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../../api';
 
-export function TabProjects({ projects, onRefreshProjects, onOpenNewProject }) {
+export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onEditProject }) {
   const [probingId, setProbingId] = useState(null);
   const [probeResult, setProbeResult] = useState(null);
 
@@ -36,9 +36,9 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject }) {
             <h3 style={{ fontSize: '1rem', fontWeight: 800 }}>Connected Fleet & Microservices</h3>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Continuous health monitoring, deployment dispatchers, and automated smoke testing</p>
           </div>
-          <button onClick={onOpenNewProject} className="btn-sm-primary">
+          {onOpenNewProject && <button onClick={onOpenNewProject} className="btn-sm-primary">
             + Connect Service
-          </button>
+          </button>}
         </div>
 
         <table className="custom-table">
@@ -86,6 +86,13 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject }) {
                       {p.has_deploy_hook ? 'Configured' : 'Not configured'}
                     </td>
                     <td style={{ textAlign: 'right' }}>
+                      {onEditProject && <button
+                        onClick={() => onEditProject && onEditProject(p)}
+                        className="btn-secondary"
+                        style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', marginRight: '0.4rem' }}
+                      >
+                        Configure
+                      </button>}
                       <button
                         onClick={() => handleProbe(p.id)}
                         disabled={isProbing}

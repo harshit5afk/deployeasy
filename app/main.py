@@ -78,6 +78,7 @@ from .schemas import (
     OverviewStats,
     ProjectCreate,
     ProjectResponse,
+    ProjectUpdate,
     ReadinessResponse,
     RollbackRequest,
     SecurityScanResponse,
@@ -606,6 +607,37 @@ def create_project(payload: ProjectCreate, user: CurrentUser, db: DbSession, csr
 def get_project(project_id: int, user: CurrentUser, db: DbSession):
     """Retrieve project metadata with owner authorization."""
     return get_authorized_project(project_id, user, db, require_write=False)
+
+
+@app.patch("/api/projects/{project_id}", response_model=ProjectResponse)
+def update_project(
+    project_id: int,
+    payload: ProjectUpdate,
+    user: CurrentUser,
+    db: DbSession,
+    csrf: CsrfProtect = None,
+):
+    """Update deployment configuration without exposing stored deploy-hook secrets."""
+    project = get_authorized_project(project_id, user, db, require_write=True)
+    changes = payload.model_dump(exclude_unset=True)
+
+    if "service_url" in changes and changes["service_url"]:
+        try:
+            validate_target_url(changes["service_url"])
+        except SSRFValidationError as err:
+            raise HTTPException(status_code=400, detail=f"Invalid service_url: {err}") from err
+
+    if "deploy_hook_url" in changes and changes["deploy_hook_url"]:
+        try:
+            validate_deploy_hook_url(changes["deploy_hook_url"])
+        except SSRFValidationError as err:
+            raise HTTPException(status_code=400, detail=f"Invalid deploy_hook_url: {err}") from err
+
+    for field, value in changes.items():
+        setattr(project, field, value)
+    db.commit()
+    db.refresh(project)
+    return project
 
 
 # -----------------------------------------------------------------------------
