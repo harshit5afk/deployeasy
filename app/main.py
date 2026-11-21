@@ -417,7 +417,13 @@ def login_user(payload: UserLogin, request: Request, response: Response, db: DbS
     """Authenticate credentials with rate limiting and issue secure HttpOnly cookies."""
     check_auth_rate_limit(request)
 
-    user = db.query(User).filter((User.username == payload.username) | (User.email == payload.username)).first()
+    # Usernames and email addresses are case-insensitive identifiers. Passwords
+    # remain byte-for-byte exact and are never trimmed or case-folded.
+    identifier = payload.username.strip().casefold()
+    user = db.query(User).filter(
+        (func.lower(User.username) == identifier)
+        | (func.lower(User.email) == identifier)
+    ).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
 

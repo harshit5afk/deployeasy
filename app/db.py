@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Text,
     create_engine,
+    func,
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
@@ -333,7 +334,9 @@ def init_db():
     try:
         # Only seed admin if explicit password is provided in environment
         if config.DEPLOYEASY_ADMIN_PASSWORD:
-            admin_user = db.query(User).filter(User.username == config.DEPLOYEASY_ADMIN_USER).first()
+            admin_user = db.query(User).filter(
+                func.lower(User.username) == config.DEPLOYEASY_ADMIN_USER.strip().lower()
+            ).first()
             if not admin_user:
                 from .auth import hash_password
 
