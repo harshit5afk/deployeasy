@@ -82,6 +82,10 @@ export const api = {
     method: 'PATCH',
     body: JSON.stringify(data)
   }),
+  provisionRenderService: (id, data) => apiFetch(`/api/projects/${id}/provision-render`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
   checkGithubRepository: (repoUrl) => apiFetch('/api/github/repository-check', {
     method: 'POST', body: JSON.stringify({ repo_url: repoUrl })
   }),

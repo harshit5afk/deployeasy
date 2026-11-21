@@ -30,6 +30,8 @@ if not CORS_ORIGINS:
 
 SERVICE_URL = os.getenv("SERVICE_URL", "")
 RENDER_DEPLOY_HOOK_URL = os.getenv("RENDER_DEPLOY_HOOK_URL", "")
+RENDER_API_KEY = os.getenv("RENDER_API_KEY", "")
+RENDER_OWNER_ID = os.getenv("RENDER_OWNER_ID", "")
 
 # Security and Demo Flags
 ENVIRONMENT = os.getenv("ENVIRONMENT", os.getenv("DEPLOYEASY_ENV", "development")).lower()

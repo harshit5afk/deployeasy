@@ -62,6 +62,7 @@ from .notifications import (
     format_slack_payload,
 )
 from .readiness import calculate_readiness_score
+from .render_client import RenderIntegrationError, create_render_service
 from .schemas import (
     AuthTokenResponse,
     CostEstimateResponse,
@@ -79,6 +80,7 @@ from .schemas import (
     ProjectCreate,
     ProjectResponse,
     ProjectUpdate,
+    RenderProvisionRequest,
     ReadinessResponse,
     RollbackRequest,
     SecurityScanResponse,
@@ -635,6 +637,66 @@ def update_project(
 
     for field, value in changes.items():
         setattr(project, field, value)
+    db.commit()
+    db.refresh(project)
+    return project
+
+
+@app.post("/api/projects/{project_id}/provision-render", response_model=ProjectResponse)
+def provision_render_service(
+    project_id: int,
+    payload: RenderProvisionRequest,
+    user: CurrentUser,
+    db: DbSession,
+    csrf: CsrfProtect = None,
+):
+    """Create a free Render service for a connected GitHub repository after user confirmation."""
+    project = get_authorized_project(project_id, user, db, require_write=True)
+    if user.role == "demo":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Demo accounts cannot create cloud services.")
+    if project.render_service_id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A Render service is already linked to this project.")
+    if project.status == "provisioning":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Render service creation is already in progress.")
+    if project.service_url:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This project already has a production URL. Verify that configuration before creating another Render service.",
+        )
+    if payload.service_type == "web_service" and payload.runtime != "docker":
+        if not payload.build_command.strip() or not payload.start_command.strip():
+            raise HTTPException(status_code=400, detail="Enter build and start commands for a web service.")
+    if payload.service_type == "static_site" and not payload.publish_path.strip():
+        raise HTTPException(status_code=400, detail="Enter the folder containing the built static site, such as dist or build.")
+
+    project.status = "provisioning"
+    db.commit()
+    try:
+        created = create_render_service(
+            repo_name=project.repo_name,
+            branch=project.branch or "main",
+            project_name=project.name,
+            project_id=project.id,
+            service_type=payload.service_type,
+            runtime=payload.runtime,
+            region=payload.region,
+            build_command=payload.build_command.strip(),
+            start_command=payload.start_command.strip(),
+            publish_path=payload.publish_path.strip(),
+        )
+    except RenderIntegrationError as err:
+        project.status = "not_deployed"
+        db.commit()
+        raise HTTPException(status_code=422, detail=str(err)) from err
+    except Exception as err:  # noqa: BLE001
+        project.status = "not_deployed"
+        db.commit()
+        log.exception("Unexpected Render provisioning failure for project %s", project.id)
+        raise HTTPException(status_code=502, detail="Render service provisioning failed unexpectedly. Check the server logs and retry.") from err
+
+    project.render_service_id = created["service_id"]
+    project.service_url = created["service_url"]
+    project.status = "deploying"
     db.commit()
     db.refresh(project)
     return project

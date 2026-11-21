@@ -63,6 +63,7 @@ class Project(Base):
     branch = Column(String(50), default="main")
     service_url = Column(String(255), default="")
     deploy_hook_url = Column(String(255), default="")
+    render_service_id = Column(String(80), nullable=True, unique=True, index=True)
     status = Column(String(30), default="operational")
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
@@ -76,6 +77,10 @@ class Project(Base):
     @property
     def has_deploy_hook(self) -> bool:
         return bool(self.deploy_hook_url and self.deploy_hook_url.strip())
+
+    @property
+    def render_service_created(self) -> bool:
+        return bool(self.render_service_id)
 
 
 class Deployment(Base):

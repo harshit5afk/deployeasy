@@ -1,0 +1,108 @@
+"""Small client for creating user-confirmed Render web and static services."""
+import json
+import re
+import urllib.error
+import urllib.request
+from typing import Any
+
+from . import config
+
+
+class RenderIntegrationError(RuntimeError):
+    """A safe, user-facing Render API error."""
+
+
+def create_render_service(
+    *,
+    repo_name: str,
+    branch: str,
+    project_name: str,
+    project_id: int,
+    service_type: str,
+    runtime: str,
+    region: str,
+    build_command: str,
+    start_command: str,
+    publish_path: str,
+) -> dict[str, str]:
+    api_key = config.RENDER_API_KEY.strip()
+    owner_id = config.RENDER_OWNER_ID.strip()
+    if not api_key:
+        raise RenderIntegrationError("Render is not connected yet. Add RENDER_API_KEY to the DeployEasy Render service environment.")
+    if not owner_id:
+        raise RenderIntegrationError("Add RENDER_OWNER_ID (your Render workspace ID) to the DeployEasy service environment.")
+
+    slug = re.sub(r"[^a-z0-9-]+", "-", project_name.lower()).strip("-") or "app"
+    name = f"{slug[:45]}-{project_id}"
+    body: dict[str, Any] = {
+        "type": service_type,
+        "name": name,
+        "ownerId": owner_id,
+        "repo": f"https://github.com/{repo_name}",
+        "branch": branch,
+        "autoDeployTrigger": "commit",
+    }
+
+    if service_type == "static_site":
+        body["serviceDetails"] = {
+            "buildCommand": build_command,
+            "publishPath": publish_path,
+        }
+    else:
+        details: dict[str, Any] = {
+            "runtime": runtime,
+            "plan": "free",
+            "region": region,
+            "numInstances": 1,
+        }
+        if runtime == "docker":
+            details["envSpecificDetails"] = {"dockerfilePath": "./Dockerfile"}
+        else:
+            details["envSpecificDetails"] = {
+                "buildCommand": build_command,
+                "startCommand": start_command,
+            }
+        body["serviceDetails"] = details
+
+    request = urllib.request.Request(
+        "https://api.render.com/v1/services",
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Accept": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=25) as response:
+            result = json.load(response)
+    except urllib.error.HTTPError as exc:
+        # Don't return request headers or API key details to the browser.
+        try:
+            error_body = json.loads(exc.read().decode("utf-8", errors="replace"))
+            reason = error_body.get("message") or error_body.get("error")
+        except (ValueError, AttributeError):
+            reason = None
+        if exc.code == 402:
+            raise RenderIntegrationError("Render requires billing setup or this account cannot create the selected service.") from exc
+        if exc.code == 401:
+            raise RenderIntegrationError("Render rejected the API key. Check RENDER_API_KEY in the DeployEasy service environment.") from exc
+        if exc.code == 403:
+            raise RenderIntegrationError("This Render API key cannot create services in the selected workspace. Check its permissions and RENDER_OWNER_ID.") from exc
+        raise RenderIntegrationError(f"Render could not create the service (HTTP {exc.code}). {reason or 'Check the repository and service settings.'}") from exc
+    except (urllib.error.URLError, TimeoutError) as exc:
+        raise RenderIntegrationError("Could not reach Render. Try again in a moment.") from exc
+
+    service = result.get("service") or {}
+    service_details = service.get("serviceDetails") or {}
+    service_id = service.get("id")
+    service_url = service_details.get("url")
+    if not service_id or not service_url:
+        raise RenderIntegrationError("Render accepted the request but did not return the service ID and public URL.")
+    return {
+        "service_id": str(service_id),
+        "service_url": str(service_url),
+        "dashboard_url": str(service.get("dashboardUrl") or ""),
+        "deploy_id": str(result.get("deployId") or ""),
+    }

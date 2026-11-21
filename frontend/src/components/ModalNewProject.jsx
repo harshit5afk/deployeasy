@@ -9,6 +9,12 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
   const [deployHookUrl, setDeployHookUrl] = useState('');
   const [repositoryCheck, setRepositoryCheck] = useState(null);
   const [checkingRepository, setCheckingRepository] = useState(false);
+  const [provisioning, setProvisioning] = useState(false);
+  const [serviceType, setServiceType] = useState('web_service');
+  const [runtime, setRuntime] = useState('node');
+  const [buildCommand, setBuildCommand] = useState('npm install');
+  const [startCommand, setStartCommand] = useState('npm start');
+  const [publishPath, setPublishPath] = useState('dist');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -19,6 +25,11 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
     setBranch(project?.branch || 'main');
     setServiceUrl(project?.service_url || '');
     setDeployHookUrl('');
+    setServiceType('web_service');
+    setRuntime('node');
+    setBuildCommand('npm install');
+    setStartCommand('npm start');
+    setPublishPath('dist');
     setRepositoryCheck(null);
     setError(null);
   }, [isOpen, project]);
@@ -35,6 +46,29 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
       setError(err.message || 'Could not check this repository');
     } finally {
       setCheckingRepository(false);
+    }
+  };
+
+  const handleProvisionRender = async () => {
+    if (!project || provisioning) return;
+    setProvisioning(true);
+    setError(null);
+    try {
+      const updated = await api.provisionRenderService(project.id, {
+        service_type: serviceType,
+        runtime,
+        region: 'singapore',
+        plan: 'free',
+        build_command: buildCommand,
+        start_command: startCommand,
+        publish_path: publishPath
+      });
+      if (onProjectUpdated) onProjectUpdated(updated);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Could not create the Render service');
+    } finally {
+      setProvisioning(false);
     }
   };
 
@@ -128,6 +162,58 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
             {project?.has_deploy_hook && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>A deploy hook is already saved. Leave blank to keep it, or enter a replacement.</p>}
             <input type="url" className="form-input" placeholder="https://api.render.com/deploy/srv-12345?key=..." value={deployHookUrl} onChange={(e) => setDeployHookUrl(e.target.value)} />
           </div>
+
+          {project && !project.render_service_created && !project.service_url && (
+            <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px' }}>
+              <strong>Create this app on Render</strong>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.45rem 0 0.8rem' }}>
+                This creates a new service and starts its first deployment on Render. DeployEasy needs RENDER_API_KEY and RENDER_OWNER_ID in its own Render environment. The free plan is selected; Render may require billing setup. Make sure the repository supports the commands below.
+              </p>
+              <div className="form-group">
+                <label className="form-label">Service type</label>
+                <select className="form-input" value={serviceType} onChange={(e) => { setServiceType(e.target.value); setBuildCommand(e.target.value === 'static_site' ? 'npm run build' : 'npm install'); }}>
+                  <option value="web_service">Web service (API or server app)</option>
+                  <option value="static_site">Static site (built frontend)</option>
+                </select>
+              </div>
+              {serviceType === 'web_service' ? <>
+                <div className="form-group">
+                  <label className="form-label">Runtime</label>
+                  <select className="form-input" value={runtime} onChange={(e) => setRuntime(e.target.value)}>
+                    <option value="node">Node.js</option>
+                    <option value="python">Python</option>
+                    <option value="go">Go</option>
+                    <option value="ruby">Ruby</option>
+                    <option value="rust">Rust</option>
+                    <option value="elixir">Elixir</option>
+                    <option value="docker">Dockerfile at repository root</option>
+                  </select>
+                </div>
+                {runtime !== 'docker' && <>
+                  <div className="form-group">
+                    <label className="form-label">Build command</label>
+                    <input className="form-input" value={buildCommand} onChange={(e) => setBuildCommand(e.target.value)} placeholder="npm install" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Start command</label>
+                    <input className="form-input" value={startCommand} onChange={(e) => setStartCommand(e.target.value)} placeholder="npm start" />
+                  </div>
+                </>}
+              </> : <>
+                <div className="form-group">
+                  <label className="form-label">Build command</label>
+                  <input className="form-input" value={buildCommand} onChange={(e) => setBuildCommand(e.target.value)} placeholder="npm run build" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Publish directory</label>
+                  <input className="form-input" value={publishPath} onChange={(e) => setPublishPath(e.target.value)} placeholder="dist" />
+                </div>
+              </>}
+              <button type="button" className="btn-primary" disabled={provisioning} onClick={handleProvisionRender}>
+                {provisioning ? 'Creating Render service...' : 'Create free Render service'}
+              </button>
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
             <button type="button" onClick={onClose} className="btn-secondary" style={{ padding: '0.55rem 1rem' }}>Cancel</button>

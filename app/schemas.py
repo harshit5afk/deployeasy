@@ -1,5 +1,6 @@
 """Pydantic schemas for DeployEasy REST API."""
 from datetime import datetime
+from typing import Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -73,11 +74,22 @@ class ProjectUpdate(BaseModel):
     deploy_hook_url: str | None = None
 
 
+class RenderProvisionRequest(BaseModel):
+    service_type: Literal["web_service", "static_site"] = "web_service"
+    runtime: Literal["docker", "node", "python", "go", "ruby", "rust", "elixir"] = "node"
+    region: Literal["oregon", "ohio", "virginia", "frankfurt", "singapore"] = "singapore"
+    plan: Literal["free"] = "free"
+    build_command: str = Field("npm install", max_length=500)
+    start_command: str = Field("npm start", max_length=500)
+    publish_path: str = Field("dist", max_length=200)
+
+
 class ProjectResponse(ProjectBase):
     id: int
     status: str
     owner_id: int | None = None
     has_deploy_hook: bool = False
+    render_service_created: bool = False
     created_at: datetime
     updated_at: datetime
 
