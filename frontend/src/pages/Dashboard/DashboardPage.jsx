@@ -22,7 +22,11 @@ export function DashboardPage() {
   const activeUser = authUser || currentUser;
   const isAdmin = activeUser?.role === 'admin';
 
-  const [activeTab, setActiveTab] = useState(isAdmin ? 'admin' : 'projects');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (isAdmin) return 'admin';
+    const saved = sessionStorage.getItem('deployeasy_active_tab');
+    return saved && saved !== 'admin' ? saved : 'projects';
+  });
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [overview, setOverview] = useState(null);
@@ -42,6 +46,20 @@ export function DashboardPage() {
     { id: 'console', label: 'API Console' }
   ];
 
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    if (!isAdmin) {
+      sessionStorage.setItem('deployeasy_active_tab', newTab);
+    }
+  };
+
+  const handleSelectProject = (proj) => {
+    setSelectedProject(proj);
+    if (proj?.id) {
+      sessionStorage.setItem('deployeasy_selected_project_id', String(proj.id));
+    }
+  };
+
   const loadData = async () => {
     try {
       const [ovData, projData, userData] = await Promise.all([
@@ -52,9 +70,9 @@ export function DashboardPage() {
       if (ovData) setOverview(ovData);
       if (projData) {
         setProjects(projData);
-        if (!selectedProject && projData.length > 0) {
-          setSelectedProject(projData[0]);
-        }
+        const savedProjId = sessionStorage.getItem('deployeasy_selected_project_id');
+        const match = projData.find((p) => String(p.id) === savedProjId);
+        setSelectedProject((prev) => prev || match || (projData.length > 0 ? projData[0] : null));
       }
       setCurrentUser(userData);
       if (userData?.role === 'admin') {
@@ -126,7 +144,7 @@ export function DashboardPage() {
                     <li key={t.id}>
                       <button
                         className={`nav-tab-btn ${activeTab === t.id ? 'active' : ''}`}
-                        onClick={() => setActiveTab(t.id)}
+                        onClick={() => handleTabChange(t.id)}
                       >
                         {t.label}
                       </button>
@@ -163,7 +181,7 @@ export function DashboardPage() {
               <TabOverview
                 overview={overview}
                 projects={projects}
-                onSwitchTab={(t) => setActiveTab(t)}
+                onSwitchTab={handleTabChange}
               />
             )}
 
@@ -180,7 +198,7 @@ export function DashboardPage() {
               <TabDeployments
                 projects={projects}
                 selectedProject={selectedProject}
-                onSelectProject={(p) => setSelectedProject(p)}
+                onSelectProject={handleSelectProject}
               />
             )}
 

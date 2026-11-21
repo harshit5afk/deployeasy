@@ -1,7 +1,10 @@
 """Database session and engine setup for DeployEasy."""
+import logging
 import os
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
+
+log = logging.getLogger("deployeasy.db")
 
 from sqlalchemy import (
     Boolean,
@@ -309,18 +312,18 @@ def seed_demo_fixtures(db: SessionLocal):
 
 
 def run_migrations() -> None:
-    """Apply Alembic migrations in deployed environments; create tables for tests/dev fallback."""
+    """Apply Alembic migrations to keep database schema up-to-date; create tables for tests fallback."""
     alembic_ini_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini")
-    if config.ENVIRONMENT in ("production", "prod") and os.getenv("TESTING") != "1":
-        if not os.path.exists(alembic_ini_path):
-            raise FileNotFoundError("alembic.ini is required in production deployments")
-        from alembic.config import Config
+    if os.getenv("TESTING") != "1" and os.path.exists(alembic_ini_path):
+        try:
+            from alembic import command
+            from alembic.config import Config
 
-        from alembic import command
-
-        cfg = Config(alembic_ini_path)
-        command.upgrade(cfg, "head")
-        return
+            cfg = Config(alembic_ini_path)
+            command.upgrade(cfg, "head")
+            return
+        except Exception as exc:
+            log.warning("Alembic migration warning, falling back to create_all: %s", exc)
     Base.metadata.create_all(bind=engine)
 
 

@@ -1,4 +1,4 @@
-# DeployEasy 🚀
+ DeployEasy 🚀
 
 > **Production-Grade GitOps Deployment Platform & Release Observatory**  
 > *Zero-downtime releases, verified 1-click rollback, pre-deploy readiness gates, and automated supply-chain security for cloud-native applications.*
