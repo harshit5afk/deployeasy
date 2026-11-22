@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
-import { ThemeSelector } from '../../components/ThemeSelector';
 
 const Stat = ({ title, value }) => (
   <div className="stat-card card-cyan"><div className="stat-label">{title}</div><div className="stat-value">{value ?? '—'}</div></div>
@@ -32,7 +31,6 @@ export function AdminDashboard() {
     <div className="telemetry-header">
       <div><h2>Administrator dashboard</h2><p style={{ color: 'var(--text-muted)' }}>Platform-wide account, repository, deployment, and integration overview.</p></div>
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-        <ThemeSelector />
         <a href="/docs" target="_blank" rel="noreferrer" className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 0.95rem', fontSize: '0.88rem' }}>
           <span>📖</span> API Docs ↗
         </a>
