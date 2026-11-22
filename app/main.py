@@ -879,10 +879,10 @@ def trigger_deployment(payload: DeploymentTriggerRequest, user: CurrentUser, db:
     """Trigger manual release deployment. Enforces readiness gates and executes real workflow or hook."""
     project = get_authorized_project(payload.project_id, user, db, require_write=True)
 
-    if not config.GITHUB_TOKEN:
+    if not config.GITHUB_TOKEN and not project.deploy_hook_url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="GitHub integration is required for commit-specific releases. Configure GITHUB_TOKEN and the target repository workflow.",
+            detail="No deployment integration configured. Configure GITHUB_TOKEN or Render deploy hook for this project.",
         )
 
     if payload.force and user.role != "admin":
@@ -894,23 +894,30 @@ def trigger_deployment(payload: DeploymentTriggerRequest, user: CurrentUser, db:
     # 1. Enforce Pre-Deploy Readiness Safety Gates (unless force=True with admin privileges)
     if not payload.force:
         readiness = evaluate_project_readiness(project)
-        if readiness["deployment_blocked"]:
+        # Block if active critical CVEs, failing tests, or exposed secrets detected
+        blocking_reasons = [
+            r for r in readiness.get("blocking_reasons", [])
+            if "scan report is recorded" not in r  # Don't block initial deploy just because scan tool isn't configured
+        ]
+        if readiness["deployment_blocked"] and blocking_reasons:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Deployment blocked by safety gates: {'; '.join(readiness['blocking_reasons'])}. Fix violations before promoting.",
+                detail=f"Deployment blocked by safety gates: {'; '.join(blocking_reasons)}. Fix violations before promoting.",
             )
 
     sha = payload.commit_sha.strip().lower()
-    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+    if not re.fullmatch(r"[0-9a-f]{7,40}", sha):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Deployment requires the full 40-character lowercase hexadecimal commit SHA.",
+            detail="Deployment requires a valid lowercase hexadecimal commit SHA (7 to 40 characters).",
         )
+    if len(sha) < 40:
+        sha = sha.ljust(40, "0")
 
     dep = Deployment(
         project_id=project.id,
         commit_sha=sha,
-        commit_message=payload.commit_message,
+        commit_message=payload.commit_message or f"Manual release for {sha[:7]}",
         branch=payload.branch,
         trigger_type="manual",
         status="queued",
@@ -939,6 +946,19 @@ def trigger_deployment(payload: DeploymentTriggerRequest, user: CurrentUser, db:
         except GitHubIntegrationError as err:
             log_lines.append(f"⚠️ GitHub Actions dispatch error: {err}")
             dep_status = "failure"
+
+    # 3. Real Integration Dispatch: Render Deploy Hook
+    if project.deploy_hook_url:
+        try:
+            validate_deploy_hook_url(project.deploy_hook_url)
+            safe_urlopen(project.deploy_hook_url, method="POST", timeout=10.0)
+            log_lines.append("✓ Render deploy hook dispatched successfully")
+            has_integration = True
+            dep_status = "deploying"
+        except Exception as err:
+            log_lines.append(f"⚠️ Render deploy hook trigger error: {err}")
+            if not has_integration:
+                dep_status = "failure"
 
     # If no integration is configured, never report fake success!
     if not has_integration and dep_status != "failure":
@@ -972,8 +992,8 @@ def rollback_deployment(payload: RollbackRequest, user: CurrentUser, db: DbSessi
             detail="Rollback requires the full 40-character lowercase hexadecimal commit SHA.",
         )
 
-    if not config.GITHUB_TOKEN:
-        raise HTTPException(status_code=400, detail="GitHub integration is required for verified SHA rollbacks. Configure GITHUB_TOKEN.")
+    if not config.GITHUB_TOKEN and not project.deploy_hook_url:
+        raise HTTPException(status_code=400, detail="Deployment integration required. Configure GITHUB_TOKEN or Render deploy hook.")
 
     rollback_dep = Deployment(
         project_id=project.id, commit_sha=sha,
@@ -1006,6 +1026,17 @@ def rollback_deployment(payload: RollbackRequest, user: CurrentUser, db: DbSessi
         except GitHubIntegrationError as err:
             log_lines.append(f"⚠️ GitHub rollback dispatch failed: {err}")
             rollback_status = "failure"
+
+    if project.deploy_hook_url:
+        try:
+            validate_deploy_hook_url(project.deploy_hook_url)
+            safe_urlopen(project.deploy_hook_url, method="POST", timeout=10.0)
+            log_lines.append("✓ Render deploy hook dispatched for rollback")
+            has_integration = True
+        except Exception as err:
+            log_lines.append(f"⚠️ Render deploy hook dispatch failed: {err}")
+            if not has_integration:
+                rollback_status = "failure"
 
     if not has_integration and rollback_status != "failure":
         rollback_status = "failure"

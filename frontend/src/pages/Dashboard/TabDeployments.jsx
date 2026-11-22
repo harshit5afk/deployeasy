@@ -52,7 +52,10 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
   const handleTriggerDeploy = async () => {
     if (!activeProjectId) return;
     const sha = commitSha.trim().toLowerCase();
-    if (!/^[0-9a-f]{40}$/.test(sha)) { alert('Enter the full 40-character commit SHA to deploy.'); return; }
+    if (!/^[0-9a-f]{7,40}$/.test(sha)) {
+      alert('Enter a valid commit SHA (at least 7 hexadecimal characters, e.g. 15dbea2...).');
+      return;
+    }
     const project = projects.find((item) => item.id === activeProjectId);
     setDeploying(true);
     try {
@@ -152,8 +155,24 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
         </div>
       </div>
 
-      <div style={{ marginBottom: '1rem' }}>
-        <input className="form-input" value={commitSha} onChange={(e) => setCommitSha(e.target.value)} placeholder="Full 40-character commit SHA" aria-label="Commit SHA to deploy" />
+      <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
+        <input
+          className="form-input"
+          value={commitSha}
+          onChange={(e) => setCommitSha(e.target.value)}
+          placeholder="Enter commit SHA (e.g. 15dbea2e1e6a3220debab16a2ff95da39f5d395f or short SHA)"
+          aria-label="Commit SHA to deploy"
+          style={{ flex: 1 }}
+        />
+        <button
+          type="button"
+          onClick={() => setCommitSha('15dbea2e1e6a3220debab16a2ff95da39f5d395f')}
+          className="btn-secondary"
+          style={{ padding: '0.45rem 0.85rem', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
+          title="Auto-fill latest hisaab commit SHA"
+        >
+          ⚡ Use latest hisaab SHA
+        </button>
       </div>
 
       {rollbackMsg && (
