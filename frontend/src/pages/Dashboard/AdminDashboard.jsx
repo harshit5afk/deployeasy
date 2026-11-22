@@ -30,7 +30,12 @@ export function AdminDashboard() {
   return <div style={{ display: 'grid', gap: '1.25rem' }}>
     <div className="telemetry-header">
       <div><h2>Administrator dashboard</h2><p style={{ color: 'var(--text-muted)' }}>Platform-wide account, repository, deployment, and integration overview.</p></div>
-      <button className="btn-secondary" onClick={load}>Refresh</button>
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <a href="/docs" target="_blank" rel="noreferrer" className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 0.95rem', fontSize: '0.88rem' }}>
+          <span>📖</span> API Docs ↗
+        </a>
+        <button className="btn-secondary" onClick={load}>Refresh</button>
+      </div>
     </div>
 
     <div className="grid-stats">
@@ -39,6 +44,24 @@ export function AdminDashboard() {
       <Stat title="Deployments" value={data.summary.deployments} />
       <Stat title="Successful / Failed" value={`${data.summary.successful_deployments} / ${data.summary.failed_deployments}`} />
     </div>
+
+    <section className="telemetry-card">
+      <div className="telemetry-header">
+        <h3>Platform & API Documentation</h3>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: '#34d399' }}>Admin Only</span>
+      </div>
+      <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+        Interactive OpenAPI (Swagger) specifications, endpoints explorer, and platform architecture docs.
+      </p>
+      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <a href="/docs" target="_blank" rel="noreferrer" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', padding: '0.5rem 1rem' }}>
+          Open Swagger UI (/docs) ↗
+        </a>
+        <a href="/redoc" target="_blank" rel="noreferrer" className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', padding: '0.5rem 1rem' }}>
+          Open ReDoc (/redoc) ↗
+        </a>
+      </div>
+    </section>
 
     <section className="telemetry-card">
       <div className="telemetry-header"><h3>Integration configuration</h3><span>Environment: {data.integrations.environment}</span></div>
