@@ -26,8 +26,8 @@ export function Navbar({ onOpenNewProject }) {
         </Link>
 
         {isAuthPage ? (
-          /* Clean Auth Header: Back to Landing Page only */
-          <div className="header-actions">
+          /* Clean Auth Header: Back to Landing Page and Theme selector */
+          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Link
               to="/"
               className="btn-secondary"
@@ -47,6 +47,7 @@ export function Navbar({ onOpenNewProject }) {
             >
               ← Back to Landing Page
             </Link>
+            <ThemeSelector />
           </div>
         ) : !isDashboard ? (
           <>
@@ -100,11 +101,11 @@ export function Navbar({ onOpenNewProject }) {
                   </Link>
                 </div>
               )}
+              <ThemeSelector />
             </div>
           </>
         ) : (
           <div className="header-actions">
-            <ThemeSelector />
             {onOpenNewProject && (
               <button className="btn-sm-primary" onClick={onOpenNewProject}>
                 <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3.5a.5.5 0 0 1-.5-.5v-4A.5.5 0 0 1 8 4z"/><path d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/></svg>
@@ -123,6 +124,7 @@ export function Navbar({ onOpenNewProject }) {
                 Logout
               </button>
             </div>
+            <ThemeSelector />
           </div>
         )}
       </div>

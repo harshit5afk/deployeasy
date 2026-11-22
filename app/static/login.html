@@ -24,6 +24,67 @@
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
+[data-theme="cyberpunk"] {
+  --bg: #050814;
+  --bg-card: rgba(10, 16, 34, 0.88);
+  --border: rgba(0, 240, 255, 0.18);
+  --border-focus: rgba(0, 240, 255, 0.6);
+  --text-main: #f0fdfa;
+  --text-muted: #5eead4;
+  --text-dim: #14b8a6;
+  --primary: #00f0ff;
+  --primary-glow: rgba(0, 240, 255, 0.35);
+  --accent: #ec4899;
+}
+[data-theme="emerald"] {
+  --bg: #030f0a;
+  --bg-card: rgba(6, 26, 18, 0.88);
+  --border: rgba(16, 185, 129, 0.2);
+  --border-focus: rgba(16, 185, 129, 0.6);
+  --text-main: #ecfdf5;
+  --text-muted: #6ee7b7;
+  --text-dim: #059669;
+  --primary: #10b981;
+  --primary-glow: rgba(16, 185, 129, 0.35);
+  --accent: #059669;
+}
+[data-theme="crimson"] {
+  --bg: #12060a;
+  --bg-card: rgba(28, 12, 18, 0.88);
+  --border: rgba(244, 63, 94, 0.2);
+  --border-focus: rgba(244, 63, 94, 0.6);
+  --text-main: #fff1f2;
+  --text-muted: #fda4af;
+  --text-dim: #e11d48;
+  --primary: #f43f5e;
+  --primary-glow: rgba(244, 63, 94, 0.35);
+  --accent: #fb923c;
+}
+[data-theme="ocean"] {
+  --bg: #060f1e;
+  --bg-card: rgba(10, 24, 48, 0.88);
+  --border: rgba(56, 189, 248, 0.2);
+  --border-focus: rgba(56, 189, 248, 0.6);
+  --text-main: #f0f9ff;
+  --text-muted: #7dd3fc;
+  --text-dim: #0284c7;
+  --primary: #0284c7;
+  --primary-glow: rgba(56, 189, 248, 0.32);
+  --accent: #38bdf8;
+}
+[data-theme="amber"] {
+  --bg: #0f0c05;
+  --bg-card: rgba(26, 21, 10, 0.88);
+  --border: rgba(245, 158, 11, 0.2);
+  --border-focus: rgba(245, 158, 11, 0.6);
+  --text-main: #fffbeb;
+  --text-muted: #fcd34d;
+  --text-dim: #d97706;
+  --primary: #f59e0b;
+  --primary-glow: rgba(245, 158, 11, 0.35);
+  --accent: #eab308;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -274,9 +335,17 @@ footer {
     </div>
     <span class="brand-text">Deploy<span>Easy</span></span>
   </a>
-  <div style="display:flex;align-items:center;gap:1rem;">
+  <div style="display:flex;align-items:center;gap:0.75rem;">
     <a href="/demo" target="_blank" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.4rem;padding:0.4rem 0.85rem;border-radius:9999px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.45);color:#fbbf24;font-size:0.82rem;font-weight:700;">⚡ Demo Sandbox ↗</a>
     <a href="/" class="back-link" style="color:#fff;font-weight:600;padding:0.45rem 1rem;background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;text-decoration:none;">← Back to Landing Page</a>
+    <select id="theme-switcher" onchange="setTheme(this.value)" style="padding:0.45rem 0.75rem;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid var(--border);color:var(--text-main);font-size:0.82rem;cursor:pointer;outline:none;">
+      <option value="cosmic">🌌 Cosmic Violet</option>
+      <option value="cyberpunk">⚡ Cyberpunk Neon</option>
+      <option value="emerald">🌲 Emerald Matrix</option>
+      <option value="crimson">🔥 Crimson Sunset</option>
+      <option value="ocean">🌊 Deep Ocean</option>
+      <option value="amber">✨ Obsidian Gold</option>
+    </select>
   </div>
 </header>
 
@@ -321,6 +390,15 @@ footer {
 </footer>
 
 <script>
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('deployeasy_theme', t);
+}
+const savedTheme = localStorage.getItem('deployeasy_theme') || 'cosmic';
+document.documentElement.setAttribute('data-theme', savedTheme);
+const ts = document.getElementById('theme-switcher');
+if (ts) ts.value = savedTheme;
+
 function quickDemoLogin() {
   localStorage.removeItem('deployeasy_token');
   fetch('/api/auth/demo-login', { method: 'POST', credentials: 'same-origin' })
