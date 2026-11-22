@@ -85,15 +85,15 @@ export function LoginPage() {
               <label className="form-label" htmlFor="login-password">Password</label>
               <div style={{ position: 'relative' }}>
                 <input
-                id="login-password"
-                type={showPassword ? 'text' : 'password'}
-                required
-                autoComplete="current-password"
-                className="form-input"
-                style={{ paddingRight: '3rem' }}
-                placeholder="••••••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="current-password"
+                  className="form-input"
+                  style={{ paddingRight: '3rem' }}
+                  placeholder="••••••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
                   type="button"

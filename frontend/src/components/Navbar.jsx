@@ -53,7 +53,6 @@ export function Navbar({ onOpenNewProject }) {
               <li><a href="#pipeline" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.88rem' }}>Workflow</a></li>
               <li><a href="#features" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.88rem' }}>Features</a></li>
               <li><a href="#comparison" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.88rem' }}>Why DeployEasy</a></li>
-              <li><a href="/docs" target="_blank" rel="noreferrer" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.88rem' }}>Docs</a></li>
             </ul>
 
             <div className="header-actions">
