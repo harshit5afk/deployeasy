@@ -10,9 +10,10 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
   const [repositoryCheck, setRepositoryCheck] = useState(null);
   const [checkingRepository, setCheckingRepository] = useState(false);
   const [provisioning, setProvisioning] = useState(false);
-  const [serviceType, setServiceType] = useState('web_service');
+  const [deploymentMode, setDeploymentMode] = useState('frontend');
+  const [serviceType, setServiceType] = useState('static_site');
   const [runtime, setRuntime] = useState('node');
-  const [buildCommand, setBuildCommand] = useState('npm install');
+  const [buildCommand, setBuildCommand] = useState('npm run build');
   const [startCommand, setStartCommand] = useState('npm start');
   const [publishPath, setPublishPath] = useState('dist');
   const [error, setError] = useState(null);
@@ -25,9 +26,10 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
     setBranch(project?.branch || 'main');
     setServiceUrl(project?.service_url || '');
     setDeployHookUrl('');
-    setServiceType('web_service');
+    setDeploymentMode('frontend');
+    setServiceType('static_site');
     setRuntime('node');
-    setBuildCommand('npm install');
+    setBuildCommand('npm run build');
     setStartCommand('npm start');
     setPublishPath('dist');
     setRepositoryCheck(null);
@@ -46,6 +48,26 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
       setError(err.message || 'Could not check this repository');
     } finally {
       setCheckingRepository(false);
+    }
+  };
+
+  const selectDeploymentMode = (mode) => {
+    setDeploymentMode(mode);
+    if (mode === 'frontend') {
+      setServiceType('static_site');
+      setBuildCommand('npm run build');
+      setPublishPath('dist');
+      return;
+    }
+
+    setServiceType('web_service');
+    setRuntime('node');
+    if (project?.repo_name?.toLowerCase() === 'harshit5afk/hisaab') {
+      setBuildCommand('npm ci && npm run build:all');
+      setStartCommand('node apps/api/dist/main.js');
+    } else {
+      setBuildCommand('npm install');
+      setStartCommand('npm start');
     }
   };
 
@@ -170,11 +192,30 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
                 This creates a new service and starts its first deployment on Render. DeployEasy needs RENDER_API_KEY and RENDER_OWNER_ID in its own Render environment. The free plan is selected; Render may require billing setup. Make sure the repository supports the commands below.
               </p>
               <div className="form-group">
-                <label className="form-label">Service type</label>
-                <select className="form-input" value={serviceType} onChange={(e) => { setServiceType(e.target.value); setBuildCommand(e.target.value === 'static_site' ? 'npm run build' : 'npm install'); }}>
-                  <option value="web_service">Web service (API or server app)</option>
-                  <option value="static_site">Static site (built frontend)</option>
-                </select>
+                <label className="form-label">What do you want to deploy?</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+                  <button type="button" className={deploymentMode === 'frontend' ? 'btn-primary' : 'btn-secondary'} aria-pressed={deploymentMode === 'frontend'} onClick={() => selectDeploymentMode('frontend')} style={{ justifyContent: 'center', padding: '0.7rem 0.5rem' }}>
+                    Frontend only
+                  </button>
+                  <button type="button" className={deploymentMode === 'full' ? 'btn-primary' : 'btn-secondary'} aria-pressed={deploymentMode === 'full'} onClick={() => selectDeploymentMode('full')} style={{ justifyContent: 'center', padding: '0.7rem 0.5rem' }}>
+                    Full app
+                  </button>
+                </div>
+                <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.55rem' }}>
+                  {deploymentMode === 'frontend'
+                    ? 'Publishes the built website as a static site. Set the build command and output folder for this repository.'
+                    : 'Runs a server/API as a web service. Full apps may also need database credentials and other environment variables in Render.'}
+                </p>
+                {deploymentMode === 'full' && project?.repo_name?.toLowerCase() === 'harshit5afk/hisaab' && (
+                  <p style={{ fontSize: '0.76rem', color: '#a5b4fc', marginTop: '0.45rem' }}>
+                    Hisaab build and start commands are prefilled from its repository README. Configure its database environment variables in Render after the service is created.
+                  </p>
+                )}
+                {deploymentMode === 'frontend' && project?.repo_name?.toLowerCase() === 'harshit5afk/hisaab' && (
+                  <p style={{ fontSize: '0.76rem', color: '#fbbf24', marginTop: '0.45rem' }}>
+                    Hisaab is a monorepo. Its frontend-only build needs the Angular app's build command and output folder; the defaults may need editing. Choose Full app for the documented combined deployment.
+                  </p>
+                )}
               </div>
               {serviceType === 'web_service' ? <>
                 <div className="form-group">
