@@ -40,6 +40,7 @@ from .db import (
     Deployment,
     HealthCheck,
     Project,
+    SecurityScan,
     SessionLocal,
     User,
     UserSession,
@@ -402,13 +403,28 @@ def register_user(payload: UserCreate, request: Request, response: Response, db:
     """Create a new developer account with PBKDF2 password hashing, rate limiting, and HttpOnly cookies."""
     check_auth_rate_limit(request)
 
-    existing = db.query(User).filter((User.username == payload.username) | (User.email == payload.email)).first()
+    username = payload.username.strip()
+    email = (payload.email or "").strip()
+
+    if not email:
+        if "@" in username:
+            email = username
+            username = username.split("@")[0].replace("-", "_")
+            if len(username) < 3:
+                username = f"{username}_dev"
+        else:
+            email = f"{username}@deployeasy.local"
+
+    existing = db.query(User).filter(
+        (func.lower(User.username) == username.casefold())
+        | (func.lower(User.email) == email.casefold())
+    ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username or email already registered")
 
     user = User(
-        username=payload.username,
-        email=payload.email,
+        username=username,
+        email=email,
         password_hash=hash_password(payload.password),
         role="developer",
         is_active=True,

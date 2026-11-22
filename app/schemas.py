@@ -1,6 +1,6 @@
 """Pydantic schemas for DeployEasy REST API."""
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
-    email: str = Field(..., min_length=5, max_length=100)
+    email: Optional[str] = Field(None, max_length=100)
     password: str = Field(..., min_length=6, max_length=100)
 
 

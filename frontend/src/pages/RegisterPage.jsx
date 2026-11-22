@@ -4,8 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navbar } from '../components/Navbar';
 
 export function RegisterPage() {
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -17,7 +16,18 @@ export function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      await register(username, email, password);
+      const val = identifier.trim();
+      let uname = val;
+      let uemail = val;
+      if (val.includes('@')) {
+        uname = val.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_') || 'developer';
+        if (uname.length < 3) uname = `${uname}_dev`;
+        uemail = val;
+      } else {
+        uname = val;
+        uemail = `${val}@deployeasy.local`;
+      }
+      await register(uname, uemail, password);
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Registration failed');
@@ -54,26 +64,14 @@ export function RegisterPage() {
 
           <form onSubmit={handleRegister}>
             <div className="form-group">
-              <label className="form-label">Username</label>
+              <label className="form-label">Username or email</label>
               <input
                 type="text"
                 required
                 className="form-input"
-                placeholder="developer"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Email Address</label>
-              <input
-                type="email"
-                required
-                className="form-input"
-                placeholder="dev@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Username or email address"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
               />
             </div>
 
