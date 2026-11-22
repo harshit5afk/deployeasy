@@ -136,7 +136,7 @@ def probe_project_health(project: Project, db: Session, allow_local_for_testing:
     try:
         with safe_urlopen(
             target_url,
-            timeout=3.0,
+            timeout=8.0,
             allow_local_for_testing=allow_local_for_testing,
         ) as resp:
             status_code = resp.status
@@ -147,7 +147,7 @@ def probe_project_health(project: Project, db: Session, allow_local_for_testing:
             try:
                 with safe_urlopen(
                     service_url,
-                    timeout=3.0,
+                    timeout=8.0,
                     allow_local_for_testing=allow_local_for_testing,
                 ) as resp:
                     status_code = resp.status

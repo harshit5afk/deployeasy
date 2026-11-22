@@ -97,7 +97,9 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onE
                         result.isHealthy ? (
                           <span style={{ color: '#34d399', fontWeight: 700 }}>{result.latency}ms (200 OK)</span>
                         ) : (
-                          <span style={{ color: '#f87171' }}>Failed</span>
+                          <span style={{ color: '#f87171' }} title={result.error || `HTTP ${result.status}`}>
+                            Failed ({result.status || 'Timeout / Sleep'})
+                          </span>
                         )
                       ) : (
                         <span style={{ color: 'var(--text-muted)' }}>No probe recorded</span>
