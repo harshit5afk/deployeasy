@@ -6,8 +6,8 @@ export function Footer() {
     <footer>
       <div className="footer-container">
         <div>
-          <div style={{ fontWeight: 800, color: '#fff', fontSize: '1rem', marginBottom: '0.35rem' }}>
-            Deploy<span style={{ color: 'var(--primary)' }}>Easy</span>
+          <div style={{ fontWeight: 800, color: 'var(--text-heading)', fontSize: '1rem', marginBottom: '0.35rem' }}>
+            Deploy<span style={{ color: 'var(--brand-color, var(--primary))' }}>Easy</span>
           </div>
           <div>Developer-First Cloud CI/CD & Deployment Observatory. MIT Licensed.</div>
         </div>

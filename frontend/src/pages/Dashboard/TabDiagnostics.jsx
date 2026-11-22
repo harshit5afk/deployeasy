@@ -102,7 +102,7 @@ export function TabDiagnostics({ projects, selectedProject }) {
           <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
               <span className="badge-status badge-failed">{diagnosis.error_category || 'Analysis'}</span>
-              <strong style={{ fontSize: '0.9rem', color: '#fff' }}>Root Cause Identified</strong>
+              <strong style={{ fontSize: '0.9rem', color: 'var(--text-heading)' }}>Root Cause Identified</strong>
             </div>
             <p style={{ fontSize: '0.82rem', color: '#fca5a5', marginBottom: '0.65rem' }}>
               {diagnosis.root_cause || diagnosis.summary}

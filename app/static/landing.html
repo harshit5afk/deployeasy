@@ -15,8 +15,12 @@
   --border: rgba(255, 255, 255, 0.08);
   --border-focus: rgba(139, 92, 246, 0.5);
   --text-main: #f8fafc;
+  --text-heading: #ffffff;
+  --text-title: #ffffff;
+  --text-accent: #c4b5fd;
   --text-muted: #94a3b8;
   --text-dim: #64748b;
+  --brand-color: #a78bfa;
   --primary: #8b5cf6;
   --primary-glow: rgba(139, 92, 246, 0.25);
   --accent: #6366f1;
@@ -35,9 +39,13 @@
   --bg-card-hover: rgba(18, 28, 58, 0.92);
   --border: rgba(0, 240, 255, 0.18);
   --border-focus: rgba(0, 240, 255, 0.6);
-  --text-main: #f0fdfa;
+  --text-main: #ecfeff;
+  --text-heading: #67e8f9;
+  --text-title: #a5f3fc;
+  --text-accent: #00f0ff;
   --text-muted: #5eead4;
   --text-dim: #14b8a6;
+  --brand-color: #00f0ff;
   --primary: #00f0ff;
   --primary-glow: rgba(0, 240, 255, 0.35);
   --accent: #ec4899;
@@ -49,8 +57,12 @@
   --border: rgba(16, 185, 129, 0.2);
   --border-focus: rgba(16, 185, 129, 0.6);
   --text-main: #ecfdf5;
+  --text-heading: #34d399;
+  --text-title: #a7f3d0;
+  --text-accent: #10b981;
   --text-muted: #6ee7b7;
   --text-dim: #059669;
+  --brand-color: #10b981;
   --primary: #10b981;
   --primary-glow: rgba(16, 185, 129, 0.35);
   --accent: #059669;
@@ -62,8 +74,12 @@
   --border: rgba(244, 63, 94, 0.2);
   --border-focus: rgba(244, 63, 94, 0.6);
   --text-main: #fff1f2;
+  --text-heading: #fda4af;
+  --text-title: #fecdd3;
+  --text-accent: #fb7185;
   --text-muted: #fda4af;
   --text-dim: #e11d48;
+  --brand-color: #f43f5e;
   --primary: #f43f5e;
   --primary-glow: rgba(244, 63, 94, 0.35);
   --accent: #fb923c;
@@ -75,8 +91,12 @@
   --border: rgba(56, 189, 248, 0.2);
   --border-focus: rgba(56, 189, 248, 0.6);
   --text-main: #f0f9ff;
+  --text-heading: #7dd3fc;
+  --text-title: #bae6fd;
+  --text-accent: #38bdf8;
   --text-muted: #7dd3fc;
   --text-dim: #0284c7;
+  --brand-color: #38bdf8;
   --primary: #0284c7;
   --primary-glow: rgba(56, 189, 248, 0.32);
   --accent: #38bdf8;
@@ -88,8 +108,12 @@
   --border: rgba(245, 158, 11, 0.2);
   --border-focus: rgba(245, 158, 11, 0.6);
   --text-main: #fffbeb;
-  --text-muted: #fcd34d;
+  --text-heading: #fcd34d;
+  --text-title: #fef3c7;
+  --text-accent: #f59e0b;
+  --text-muted: #fde68a;
   --text-dim: #d97706;
+  --brand-color: #f59e0b;
   --primary: #f59e0b;
   --primary-glow: rgba(245, 158, 11, 0.35);
   --accent: #eab308;
@@ -177,7 +201,7 @@ header {
   letter-spacing: -0.02em;
 }
 
-.brand-text span { color: var(--primary); }
+.brand-text span { color: var(--brand-color, var(--primary)); transition: color 0.25s ease; }
 
 .nav-links {
   display: flex;
@@ -286,12 +310,13 @@ header {
   font-weight: 800;
   line-height: 1.15;
   letter-spacing: -0.035em;
-  color: #fff;
+  color: var(--text-title, #fff);
   margin-bottom: 1.5rem;
+  transition: color 0.25s ease;
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #c4b5fd 0%, #818cf8 40%, #f472b6 100%);
+  background: linear-gradient(135deg, var(--text-title, #fff) 0%, var(--primary) 50%, var(--accent) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -503,7 +528,8 @@ section {
   font-size: 1.15rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
-  color: #fff;
+  color: var(--text-heading, #fff);
+  transition: color 0.25s ease;
 }
 
 .feature-text {

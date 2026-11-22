@@ -142,7 +142,7 @@ export function LandingPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
             <div className="stat-card">
               <div style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>⏪</div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: '#fff' }}>Verified 1-Click Rollback</h3>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-heading)' }}>Verified 1-Click Rollback</h3>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                 Trigger instant rollbacks to known-good Git commit SHAs. DeployEasy polls the target service until the old version is proven live.
               </p>
@@ -150,7 +150,7 @@ export function LandingPage() {
 
             <div className="stat-card">
               <div style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>🛡️</div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: '#fff' }}>Pre-Deploy Readiness Score</h3>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-heading)' }}>Pre-Deploy Readiness Score</h3>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                 100-point safety scorecard evaluating CI tests, Trivy CVEs, secret leak audits, and fleet health with hard safety gate blocks.
               </p>
@@ -158,7 +158,7 @@ export function LandingPage() {
 
             <div className="stat-card">
               <div style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>🔒</div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: '#fff' }}>Trivy & Gitleaks Security Gate</h3>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-heading)' }}>Trivy & Gitleaks Security Gate</h3>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                 Automated vulnerability and leaked secret detection before images enter production registry.
               </p>
@@ -166,7 +166,7 @@ export function LandingPage() {
 
             <div className="stat-card">
               <div style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>💰</div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: '#fff' }}>FinOps Cloud Cost Estimator</h3>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-heading)' }}>FinOps Cloud Cost Estimator</h3>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                 Real-time estimation of container compute, RAM, registry storage, and CI runner minutes with optimization suggestions.
               </p>
@@ -174,7 +174,7 @@ export function LandingPage() {
 
             <div className="stat-card">
               <div style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>🩺</div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: '#fff' }}>Health Probing with SSRF Shield</h3>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-heading)' }}>Health Probing with SSRF Shield</h3>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                 Active /health polling with sub-30ms latency tracking and DNS rebinding SSRF protection.
               </p>
@@ -182,7 +182,7 @@ export function LandingPage() {
 
             <div className="stat-card">
               <div style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>🔔</div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: '#fff' }}>Diagnostics & Webhooks</h3>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-heading)' }}>Diagnostics & Webhooks</h3>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                 Automated failure log categorization, incident post-mortem generator, and Slack/Discord notifications.
               </p>

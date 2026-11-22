@@ -91,7 +91,7 @@ export function TabEnvValidator() {
             <tbody>
               {validation.sanitized_variables && Object.entries(validation.sanitized_variables).map(([k, v]) => (
                 <tr key={k}>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#fff' }}>{k}</td>
+                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-main)' }}>{k}</td>
                   <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                     {v || '—'}
                   </td>

@@ -206,7 +206,7 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
             ) : (
               deployments.map((d, idx) => (
                 <tr key={d.id}>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#fff' }}>
+                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-main)' }}>
                     #{String(deployments.length - idx).padStart(2, '0')}
                   </td>
                   <td>

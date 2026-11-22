@@ -48,7 +48,7 @@ export function RegisterPage() {
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" fill="#fff" />
               </svg>
             </div>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', marginBottom: '0.35rem' }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-heading)', marginBottom: '0.35rem' }}>
               Create Developer Account
             </h1>
             <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>

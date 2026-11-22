@@ -81,7 +81,7 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onE
                 return (
                   <tr key={p.id}>
                     <td>
-                      <div style={{ fontWeight: 700, color: '#fff' }}>{p.name}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>{p.name}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}><a href={`https://github.com/${p.repo_name}`} target="_blank" rel="noreferrer">{p.repo_name}</a> · {p.branch}</div>
                     </td>
                     <td>

@@ -79,7 +79,7 @@ export function TabConsole() {
                 <div style={{ textAlign: 'left' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#34d399', fontFamily: 'var(--font-mono)' }}>{ep.method}</span>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: '#fff' }}>{ep.path}</span>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-main)' }}>{ep.path}</span>
                   </div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>{ep.desc}</div>
                 </div>
