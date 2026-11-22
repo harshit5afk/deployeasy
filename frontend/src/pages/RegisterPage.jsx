@@ -8,7 +8,7 @@ export function RegisterPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, login } = useAuth();
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
@@ -30,7 +30,14 @@ export function RegisterPage() {
       await register(uname, uemail, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      // If user already exists, seamlessly attempt login with provided credentials
+      try {
+        await login(identifier.trim(), password);
+        navigate('/dashboard');
+        return;
+      } catch (_) {
+        setError(err.message || 'An account with this email/username already exists. Please Log In with your password.');
+      }
     } finally {
       setLoading(false);
     }
@@ -58,7 +65,28 @@ export function RegisterPage() {
 
           {error && (
             <div style={{ padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '8px', color: '#fca5a5', fontSize: '0.84rem', marginBottom: '1.25rem' }}>
-              {error}
+              <div>{error}</div>
+              {(error.includes('already exists') || error.includes('already registered')) && (
+                <div style={{ marginTop: '0.65rem' }}>
+                  <Link
+                    to="/login"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      color: '#fff',
+                      background: 'var(--primary)',
+                      borderRadius: '6px',
+                      padding: '0.35rem 0.8rem',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      textDecoration: 'none'
+                    }}
+                  >
+                    → Go to Log In Page
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 

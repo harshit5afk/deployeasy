@@ -420,7 +420,18 @@ def register_user(payload: UserCreate, request: Request, response: Response, db:
         | (func.lower(User.email) == email.casefold())
     ).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Username or email already registered")
+        if verify_password(payload.password, existing.password_hash):
+            session = create_user_session(db, existing)
+            set_session_cookies(response, session)
+            return AuthTokenResponse(
+                token=getattr(session, "raw_token", session.session_token),
+                csrf_token=session.csrf_token,
+                user=existing,
+            )
+        raise HTTPException(
+            status_code=400,
+            detail=f"An account with this email or username already exists (User ID: '{existing.username}'). Please Log In with your password."
+        )
 
     user = User(
         username=username,
