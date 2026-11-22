@@ -296,16 +296,16 @@ footer {
       ⚡ Instant Demo Access (No Credentials Required)
     </button>
 
-    <div class="divider">or enter email</div>
+    <div class="divider">or enter user id</div>
 
-    <form onsubmit="handleEmailAuth(event)">
+    <form onsubmit="handleAuth(event)">
       <div class="form-group">
-        <label class="form-label">Email address</label>
-        <input type="email" id="auth-email" class="form-input" placeholder="developer@company.com" required>
+        <label class="form-label">User ID</label>
+        <input type="text" id="auth-identifier" class="form-input" placeholder="Enter User ID (e.g. admin)" required autocomplete="username">
       </div>
       <div class="form-group">
         <label class="form-label">Password</label>
-        <input type="password" id="auth-pass" class="form-input" placeholder="••••••••••••" required>
+        <input type="password" id="auth-pass" class="form-input" placeholder="••••••••••••" required autocomplete="current-password">
       </div>
       <button type="submit" class="btn-submit">Log In to Dashboard</button>
     </form>
@@ -336,47 +336,32 @@ function quickDemoLogin() {
     });
 }
 
-async function handleEmailAuth(e) {
+async function handleAuth(e) {
   e.preventDefault();
   localStorage.removeItem('deployeasy_token');
-  const email = document.getElementById('auth-email').value;
+  const identifierInput = document.getElementById('auth-identifier') || document.getElementById('auth-email');
+  const identifier = identifierInput ? identifierInput.value.trim() : '';
   const pass = document.getElementById('auth-pass').value;
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: email, password: pass })
+      body: JSON.stringify({ username: identifier, password: pass })
     });
     if (res.ok) {
       const data = await res.json();
       localStorage.setItem('deployeasy_user', JSON.stringify(data.user));
       window.location.href = '/dashboard';
     } else {
-      // Auto-register if new developer
-      const reg = await fetch('/api/auth/register', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_'),
-          email: email,
-          password: pass
-        })
-      });
-      if (reg.ok) {
-        const d = await reg.json();
-        localStorage.setItem('deployeasy_user', JSON.stringify(d.user));
-        window.location.href = '/dashboard';
-      } else {
-        const err = await reg.json();
-        alert('Authentication error: ' + (err.detail || 'Could not authenticate'));
-      }
+      const err = await res.json();
+      alert('Authentication error: ' + (err.detail || 'Invalid User ID or password'));
     }
   } catch(err) {
     alert('Network error: ' + err.message);
   }
 }
+const handleEmailAuth = handleAuth;
 
 // Check if user is already authenticated
 fetch('/api/auth/me', { credentials: 'same-origin' })
