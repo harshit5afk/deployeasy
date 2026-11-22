@@ -196,7 +196,7 @@ header {
   max-width: 1240px;
   margin: 0 auto;
   padding: 5rem 1.5rem 4rem;
-  text-align: center;
+  text-align: left;
   position: relative;
   z-index: 1;
 }
@@ -232,7 +232,7 @@ header {
 
 .hero-subtitle {
   max-width: 760px;
-  margin: 0 auto 2.5rem;
+  margin: 0 0 2.5rem 0;
   font-size: 1.15rem;
   color: var(--text-muted);
   line-height: 1.7;
@@ -241,7 +241,7 @@ header {
 .hero-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
   margin-bottom: 3.5rem;
@@ -307,7 +307,7 @@ header {
 /* Pipeline Flow Hero Graphic */
 .pipeline-preview-card {
   max-width: 1040px;
-  margin: 0 auto 5rem;
+  margin: 0 0 5rem 0;
   background: var(--bg-card);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border);
@@ -485,7 +485,7 @@ section {
 .tech-strip {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 2.5rem;
   flex-wrap: wrap;
   padding: 2rem 1.5rem;
@@ -510,7 +510,7 @@ section {
   border: 1px solid rgba(139, 92, 246, 0.35);
   border-radius: 20px;
   padding: 3.5rem 2rem;
-  text-align: center;
+  text-align: left;
   margin: 4rem auto 2rem;
 }
 
@@ -522,7 +522,7 @@ section {
 
 .cta-desc {
   max-width: 600px;
-  margin: 0 auto 2rem;
+  margin: 0 0 2rem 0;
   color: var(--text-muted);
   font-size: 1.05rem;
 }
@@ -786,7 +786,7 @@ footer {
       <p class="cta-desc">
         Connect your repository, view real-time telemetry, audit container vulnerabilities, and gain instant rollback peace of mind.
       </p>
-      <div style="display: flex; gap: 1rem; justify-content: center;">
+      <div style="display: flex; gap: 1rem; justify-content: flex-start;">
         <a href="/dashboard" class="btn-primary" style="padding: 0.8rem 1.8rem; font-size: 0.95rem;">
           Open Dashboard
         </a>

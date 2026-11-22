@@ -241,7 +241,7 @@ export function LandingPage() {
 
         {/* Tech Stack Strip */}
         <section style={{ maxWidth: '1240px', margin: '0 auto', padding: '1rem 1.5rem 4rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '2rem', flexWrap: 'wrap', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '14px' }}>
             <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>⚡ FastAPI 0.115</span>
             <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>⚛️ React 18</span>
             <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>🐳 Docker & GHCR</span>
