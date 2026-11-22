@@ -141,9 +141,24 @@ def probe_project_health(project: Project, db: Session, allow_local_for_testing:
             status_code = resp.status
             is_healthy = (200 <= status_code < 300)
     except Exception as exc:  # noqa: BLE001
-        status_code = 503
-        is_healthy = False
-        error_msg = str(exc)
+        # Fallback to root service_url if /health is not available (e.g. for static sites)
+        if target_url != service_url:
+            try:
+                with safe_urlopen(
+                    service_url,
+                    timeout=3.0,
+                    allow_local_for_testing=allow_local_for_testing,
+                ) as resp:
+                    status_code = resp.status
+                    is_healthy = (200 <= status_code < 300)
+            except Exception:
+                status_code = 503
+                is_healthy = False
+                error_msg = str(exc)
+        else:
+            status_code = 503
+            is_healthy = False
+            error_msg = str(exc)
 
     elapsed_ms = round((time.time() - start_probe) * 1000, 2)
     check_entry = HealthCheck(

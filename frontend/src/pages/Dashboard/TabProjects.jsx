@@ -5,6 +5,27 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onE
   const [probingId, setProbingId] = useState(null);
   const [probeResult, setProbeResult] = useState(null);
 
+  // Auto-probe deploying services silently every 8s until they become operational
+  React.useEffect(() => {
+    const deployingProjects = (projects || []).filter(
+      (p) => p.status === 'deploying' && p.service_url
+    );
+    if (deployingProjects.length === 0) return;
+
+    const timer = setInterval(async () => {
+      for (const p of deployingProjects) {
+        try {
+          const res = await api.probeHealth(p.id);
+          if (res.is_healthy) {
+            if (onRefreshProjects) onRefreshProjects();
+          }
+        } catch (_) {}
+      }
+    }, 8000);
+
+    return () => clearInterval(timer);
+  }, [projects]);
+
   const handleProbe = async (pId) => {
     setProbingId(pId);
     setProbeResult(null);

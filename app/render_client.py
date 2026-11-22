@@ -47,6 +47,13 @@ def create_render_service(
         body["serviceDetails"] = {
             "buildCommand": build_command,
             "publishPath": publish_path,
+            "routes": [
+                {
+                    "type": "rewrite",
+                    "source": "/*",
+                    "destination": "/index.html",
+                }
+            ],
         }
     else:
         details: dict[str, Any] = {

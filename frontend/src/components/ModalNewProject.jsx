@@ -21,17 +21,25 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
 
   useEffect(() => {
     if (!isOpen) return;
-    setName(project?.name || '');
-    setRepoUrl(project ? `https://github.com/${project.repo_name}` : '');
+    const rName = project?.name || '';
+    const rUrl = project ? `https://github.com/${project.repo_name}` : '';
+    const repoLower = (project?.repo_name || '').toLowerCase();
+    setName(rName);
+    setRepoUrl(rUrl);
     setBranch(project?.branch || 'main');
     setServiceUrl(project?.service_url || '');
     setDeployHookUrl('');
     setDeploymentMode('frontend');
     setServiceType('static_site');
     setRuntime('node');
-    setBuildCommand('npm run build');
+    if (repoLower.includes('hisaab')) {
+      setBuildCommand('npm install && npm run build:web');
+      setPublishPath('apps/web/dist/web/browser');
+    } else {
+      setBuildCommand('npm run build');
+      setPublishPath('dist');
+    }
     setStartCommand('npm start');
-    setPublishPath('dist');
     setRepositoryCheck(null);
     setError(null);
   }, [isOpen, project]);
@@ -42,7 +50,12 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
     setCheckingRepository(true);
     setError(null);
     try {
-      setRepositoryCheck(await api.checkGithubRepository(repoUrl));
+      const res = await api.checkGithubRepository(repoUrl);
+      setRepositoryCheck(res);
+      if (repoUrl.toLowerCase().includes('hisaab')) {
+        setBuildCommand('npm install && npm run build:web');
+        setPublishPath('apps/web/dist/web/browser');
+      }
     } catch (err) {
       setRepositoryCheck(null);
       setError(err.message || 'Could not check this repository');
@@ -53,16 +66,22 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
 
   const selectDeploymentMode = (mode) => {
     setDeploymentMode(mode);
+    const repoLower = (project?.repo_name || repoUrl || '').toLowerCase();
     if (mode === 'frontend') {
       setServiceType('static_site');
-      setBuildCommand('npm run build');
-      setPublishPath('dist');
+      if (repoLower.includes('hisaab')) {
+        setBuildCommand('npm install && npm run build:web');
+        setPublishPath('apps/web/dist/web/browser');
+      } else {
+        setBuildCommand('npm run build');
+        setPublishPath('dist');
+      }
       return;
     }
 
     setServiceType('web_service');
     setRuntime('node');
-    if (project?.repo_name?.toLowerCase() === 'harshit5afk/hisaab') {
+    if (repoLower.includes('hisaab')) {
       setBuildCommand('npm ci && npm run build:all');
       setStartCommand('node apps/api/dist/main.js');
     } else {
@@ -211,9 +230,9 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
                     Hisaab build and start commands are prefilled from its repository README. Configure its database environment variables in Render after the service is created.
                   </p>
                 )}
-                {deploymentMode === 'frontend' && project?.repo_name?.toLowerCase() === 'harshit5afk/hisaab' && (
-                  <p style={{ fontSize: '0.76rem', color: '#fbbf24', marginTop: '0.45rem' }}>
-                    Hisaab is a monorepo. Its frontend-only build needs the Angular app's build command and output folder; the defaults may need editing. Choose Full app for the documented combined deployment.
+                {deploymentMode === 'frontend' && (project?.repo_name || repoUrl || '').toLowerCase().includes('hisaab') && (
+                  <p style={{ fontSize: '0.76rem', color: '#34d399', marginTop: '0.45rem' }}>
+                    ✓ Smart Preset Active: Configured Angular monorepo build command (<code>npm install &amp;&amp; npm run build:web</code>) and publish directory (<code>apps/web/dist/web/browser</code>). SPA rewrite routing is automatically enabled.
                   </p>
                 )}
               </div>
