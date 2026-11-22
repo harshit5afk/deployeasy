@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Navbar } from '../../components/Navbar';
 import { Footer } from '../../components/Footer';
 import { ModalNewProject } from '../../components/ModalNewProject';
@@ -17,10 +17,11 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api';
 
 export function DashboardPage() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
   const [currentUser, setCurrentUser] = useState(null);
   const activeUser = authUser || currentUser;
   const isAdmin = activeUser?.role === 'admin';
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState(() => {
     if (isAdmin) return 'admin';
@@ -67,6 +68,10 @@ export function DashboardPage() {
         api.getProjects().catch(() => []),
         api.getCurrentUser().catch(() => null)
       ]);
+      if (!userData && !authUser) {
+        navigate('/login');
+        return;
+      }
       if (ovData) setOverview(ovData);
       if (projData) {
         setProjects(projData);
@@ -80,6 +85,9 @@ export function DashboardPage() {
       }
     } catch (e) {
       console.error(e);
+      if (!authUser) {
+        navigate('/login');
+      }
     }
   };
 
