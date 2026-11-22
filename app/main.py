@@ -99,7 +99,7 @@ from .ssrf import (
     validate_webhook_url,
 )
 
-STATIC = Path(__file__).parent / "static"
+STATIC = Path(__file__).resolve().parent / "static"
 START_TIME = time.time()
 requests_served = 0
 _runs_cache = {"at": 0.0, "data": None}
@@ -225,8 +225,8 @@ app.add_middleware(
 
 # Mount React built static assets if available
 dist_assets = STATIC / "dist" / "assets"
-if dist_assets.exists():
-    app.mount("/assets", StaticFiles(directory=str(dist_assets)), name="react-assets")
+dist_assets.mkdir(parents=True, exist_ok=True)
+app.mount("/assets", StaticFiles(directory=str(dist_assets)), name="react-assets")
 
 
 @app.middleware("http")
