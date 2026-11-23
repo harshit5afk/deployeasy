@@ -632,58 +632,40 @@ def check_github_repository(payload: GitHubRepositoryRequest, user: CurrentUser)
 @app.get("/api/projects", response_model=list[ProjectResponse])
 def list_projects(user: CurrentUser, db: DbSession):
     """List projects accessible to the authenticated user. Excludes deploy hook secrets."""
-    if user.role == "admin":
-        return db.query(Project).all()
-
-    # 1. First find projects owned by the user or unassigned
-    projects = db.query(Project).filter(
-        (Project.owner_id == user.id) | (Project.owner_id.is_(None))
-    ).all()
-
-    if not projects and user.role != "demo":
-        # 2. Check if any existing projects exist in the database (e.g. created before relogin or restart)
-        existing_all = db.query(Project).all()
-        if existing_all:
-            for p in existing_all:
+    # For any authenticated developer (non-demo), show the entire fleet of projects in this instance!
+    if user.role != "demo":
+        all_projects = db.query(Project).all()
+        needs_commit = False
+        for p in all_projects:
+            if p.owner_id != user.id:
                 p.owner_id = user.id
+                needs_commit = True
+
+        # Ensure primary hisaab project is always present in the developer's fleet
+        if not any(p.repo_name == "harshit5afk/hisaab" for p in all_projects):
+            default_proj = Project(
+                name="hisaab",
+                repo_name="harshit5afk/hisaab",
+                branch="main",
+                service_url="https://hisaab-1-gib7.onrender.com",
+                owner_id=user.id,
+                status="operational",
+                build_command="npm install && npm run build:web",
+                publish_dir="apps/web/dist/web/browser",
+            )
+            db.add(default_proj)
+            all_projects.insert(0, default_proj)
+            needs_commit = True
+
+        if needs_commit:
             try:
                 db.commit()
-                projects = existing_all
             except Exception:
                 db.rollback()
-                projects = existing_all
-        else:
-            # 3. Create default hisaab project safely with no duplicate key collision
-            existing_hisaab = db.query(Project).filter(Project.repo_name == "harshit5afk/hisaab").first()
-            if existing_hisaab:
-                existing_hisaab.owner_id = user.id
-                try:
-                    db.commit()
-                    projects = [existing_hisaab]
-                except Exception:
-                    db.rollback()
-                    projects = [existing_hisaab]
-            else:
-                default_proj = Project(
-                    name="hisaab",
-                    repo_name="harshit5afk/hisaab",
-                    branch="main",
-                    service_url="https://hisaab-1-gib7.onrender.com",
-                    owner_id=user.id,
-                    status="operational",
-                    build_command="npm install && npm run build:web",
-                    publish_dir="apps/web/dist/web/browser",
-                )
-                db.add(default_proj)
-                try:
-                    db.commit()
-                    db.refresh(default_proj)
-                    projects = [default_proj]
-                except Exception:
-                    db.rollback()
-                    projects = db.query(Project).all()
 
-    return projects
+        return all_projects
+
+    return db.query(Project).filter(Project.owner_id == user.id).all()
 
 
 @app.post("/api/projects", response_model=ProjectResponse, status_code=201)

@@ -74,13 +74,22 @@ export function DashboardPage() {
       }
       if (ovData) setOverview(ovData);
       if (projData && projData.length > 0) {
-        setProjects(projData);
+        // Merge with locally cached projects by repo_name so no project is accidentally dropped
+        let mergedList = [...projData];
         try {
-          localStorage.setItem('deployeasy_saved_projects', JSON.stringify(projData));
+          const cached = JSON.parse(localStorage.getItem('deployeasy_saved_projects') || '[]');
+          for (const c of cached) {
+            if (c.repo_name && !mergedList.some((p) => p.repo_name === c.repo_name)) {
+              mergedList.push(c);
+            }
+          }
+          localStorage.setItem('deployeasy_saved_projects', JSON.stringify(mergedList));
         } catch (_) {}
+
+        setProjects(mergedList);
         const savedProjId = sessionStorage.getItem('deployeasy_selected_project_id');
-        const match = projData.find((p) => String(p.id) === savedProjId);
-        setSelectedProject((prev) => prev || match || (projData.length > 0 ? projData[0] : null));
+        const match = mergedList.find((p) => String(p.id) === savedProjId);
+        setSelectedProject((prev) => prev || match || (mergedList.length > 0 ? mergedList[0] : null));
       } else {
         // Fallback: restore from localStorage cache if container restarted or session refreshed
         try {
