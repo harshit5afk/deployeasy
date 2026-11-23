@@ -39,6 +39,12 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
         setBuildCommand('cd mock && npm install --legacy-peer-deps');
         setStartCommand('npm start --prefix mock');
       }
+    } else if (lower.includes('ecosort') || lower.includes('ecoai') || lower.includes('streamlit') || lower.includes('python')) {
+      setDeploymentMode('backend');
+      setServiceType('web_service');
+      setRuntime('python');
+      setBuildCommand('pip install -r requirements.txt');
+      setStartCommand('streamlit run src/app.py --server.port $PORT --server.address 0.0.0.0');
     } else {
       if (mode === 'frontend') {
         setBuildCommand('npm run build');
@@ -234,6 +240,59 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
           <div className="form-group">
             <label className="form-label">Production Branch</label>
             <input type="text" required className="form-input" placeholder="main" value={branch} onChange={(e) => setBranch(e.target.value)} />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Application Type</label>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+              <button
+                type="button"
+                className={serviceType === 'static_site' ? 'btn-primary' : 'btn-secondary'}
+                style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                onClick={() => {
+                  setServiceType('static_site');
+                  setDeploymentMode('frontend');
+                  setRuntime('node');
+                  setBuildCommand('npm run build');
+                  setPublishPath('dist');
+                }}
+              >
+                🌐 Frontend (React / Static Site)
+              </button>
+              <button
+                type="button"
+                className={serviceType === 'web_service' && runtime === 'python' ? 'btn-primary' : 'btn-secondary'}
+                style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                onClick={() => {
+                  setServiceType('web_service');
+                  setDeploymentMode('backend');
+                  setRuntime('python');
+                  setBuildCommand('pip install -r requirements.txt');
+                  setStartCommand('streamlit run src/app.py --server.port $PORT --server.address 0.0.0.0');
+                }}
+              >
+                🐍 Python / Streamlit (AI Web Service)
+              </button>
+              <button
+                type="button"
+                className={serviceType === 'web_service' && runtime === 'node' ? 'btn-primary' : 'btn-secondary'}
+                style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                onClick={() => {
+                  setServiceType('web_service');
+                  setDeploymentMode('backend');
+                  setRuntime('node');
+                  setBuildCommand('npm install');
+                  setStartCommand('npm start');
+                }}
+              >
+                ⚡ Node.js Backend API
+              </button>
+            </div>
+            {serviceType === 'web_service' && runtime === 'python' && (
+              <p style={{ fontSize: '0.75rem', color: '#34d399', marginTop: '0.25rem' }}>
+                ✓ Configured for Python & Streamlit (`pip install -r requirements.txt` ➔ `streamlit run`)
+              </p>
+            )}
           </div>
 
           <div className="form-group">
