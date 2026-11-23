@@ -22,6 +22,7 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
   const applyRepoPresets = (urlOrName, mode = deploymentMode) => {
     const lower = (urlOrName || '').toLowerCase();
     if (lower.includes('hisaab')) {
+      setServiceUrl((prev) => prev || 'https://hisaab-1-gib7.onrender.com');
       if (mode === 'frontend') {
         setBuildCommand('npm install && npm run build:web');
         setPublishPath('apps/web/dist/web/browser');
@@ -29,7 +30,8 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
         setBuildCommand('npm ci && npm run build:all');
         setStartCommand('node apps/api/dist/main.js');
       }
-    } else if (lower.includes('brinhack')) {
+    } else if (lower.includes('brinhack') || lower.includes('studyapp')) {
+      setServiceUrl((prev) => prev || 'https://studyapp-1.onrender.com');
       if (mode === 'frontend') {
         setBuildCommand('cd mock && npm install --legacy-peer-deps && CI=false npm run build');
         setPublishPath('mock/build');
@@ -55,7 +57,18 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
     setName(rName);
     setRepoUrl(rUrl);
     setBranch(project?.branch || 'main');
-    setServiceUrl(project?.service_url || '');
+    
+    // Auto-fill live production URL for known services if not set!
+    let sUrl = project?.service_url || '';
+    if (!sUrl) {
+      const lower = (rName + ' ' + (project?.repo_name || '') + ' ' + rUrl).toLowerCase();
+      if (lower.includes('hisaab')) {
+        sUrl = 'https://hisaab-1-gib7.onrender.com';
+      } else if (lower.includes('brinhack') || lower.includes('studyapp')) {
+        sUrl = 'https://studyapp-1.onrender.com';
+      }
+    }
+    setServiceUrl(sUrl);
     setDeployHookUrl('');
     setDeploymentMode('frontend');
     setServiceType('static_site');
@@ -206,7 +219,26 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
           </div>
 
           <div className="form-group">
-            <label className="form-label">Production Service URL (Website Link)</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>Production Service URL (Website Link)</label>
+              {(name.toLowerCase().includes('hisaab') || repoUrl.toLowerCase().includes('hisaab')) && (
+                <button
+                  type="button"
+                  onClick={() => setServiceUrl('https://hisaab-1-gib7.onrender.com')}
+                  style={{
+                    background: 'rgba(56, 189, 248, 0.1)',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    color: '#38bdf8',
+                    fontSize: '0.72rem',
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ⚡ Auto-fill Hisaab Live URL
+                </button>
+              )}
+            </div>
             <input
               type="url"
               className="form-input"

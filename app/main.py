@@ -640,6 +640,10 @@ def list_projects(user: CurrentUser, db: DbSession):
             if p.owner_id != user.id:
                 p.owner_id = user.id
                 needs_commit = True
+            if p.repo_name and "hisaab" in p.repo_name.lower() and not p.service_url:
+                p.service_url = "https://hisaab-1-gib7.onrender.com"
+                p.status = "operational"
+                needs_commit = True
 
         # Ensure primary hisaab project is always present in the developer's fleet
         if not any(p.repo_name == "harshit5afk/hisaab" for p in all_projects):
