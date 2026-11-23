@@ -19,11 +19,39 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const applyRepoPresets = (urlOrName, mode = deploymentMode) => {
+    const lower = (urlOrName || '').toLowerCase();
+    if (lower.includes('hisaab')) {
+      if (mode === 'frontend') {
+        setBuildCommand('npm install && npm run build:web');
+        setPublishPath('apps/web/dist/web/browser');
+      } else {
+        setBuildCommand('npm ci && npm run build:all');
+        setStartCommand('node apps/api/dist/main.js');
+      }
+    } else if (lower.includes('brinhack')) {
+      if (mode === 'frontend') {
+        setBuildCommand('npm install && npm run build');
+        setPublishPath('mock/build');
+      } else {
+        setBuildCommand('npm install');
+        setStartCommand('npm start');
+      }
+    } else {
+      if (mode === 'frontend') {
+        setBuildCommand('npm run build');
+        setPublishPath('dist');
+      } else {
+        setBuildCommand('npm install');
+        setStartCommand('npm start');
+      }
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
     const rName = project?.name || '';
     const rUrl = project ? `https://github.com/${project.repo_name}` : '';
-    const repoLower = (project?.repo_name || '').toLowerCase();
     setName(rName);
     setRepoUrl(rUrl);
     setBranch(project?.branch || 'main');
@@ -32,13 +60,7 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
     setDeploymentMode('frontend');
     setServiceType('static_site');
     setRuntime('node');
-    if (repoLower.includes('hisaab')) {
-      setBuildCommand('npm install && npm run build:web');
-      setPublishPath('apps/web/dist/web/browser');
-    } else {
-      setBuildCommand('npm run build');
-      setPublishPath('dist');
-    }
+    applyRepoPresets(project?.repo_name || rUrl, 'frontend');
     setStartCommand('npm start');
     setRepositoryCheck(null);
     setError(null);
@@ -52,10 +74,7 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
     try {
       const res = await api.checkGithubRepository(repoUrl);
       setRepositoryCheck(res);
-      if (repoUrl.toLowerCase().includes('hisaab')) {
-        setBuildCommand('npm install && npm run build:web');
-        setPublishPath('apps/web/dist/web/browser');
-      }
+      applyRepoPresets(repoUrl);
     } catch (err) {
       setRepositoryCheck(null);
       setError(err.message || 'Could not check this repository');
@@ -66,28 +85,8 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
 
   const selectDeploymentMode = (mode) => {
     setDeploymentMode(mode);
-    const repoLower = (project?.repo_name || repoUrl || '').toLowerCase();
-    if (mode === 'frontend') {
-      setServiceType('static_site');
-      if (repoLower.includes('hisaab')) {
-        setBuildCommand('npm install && npm run build:web');
-        setPublishPath('apps/web/dist/web/browser');
-      } else {
-        setBuildCommand('npm run build');
-        setPublishPath('dist');
-      }
-      return;
-    }
-
-    setServiceType('web_service');
-    setRuntime('node');
-    if (repoLower.includes('hisaab')) {
-      setBuildCommand('npm ci && npm run build:all');
-      setStartCommand('node apps/api/dist/main.js');
-    } else {
-      setBuildCommand('npm install');
-      setStartCommand('npm start');
-    }
+    setServiceType(mode === 'frontend' ? 'static_site' : 'web_service');
+    applyRepoPresets(project?.repo_name || repoUrl, mode);
   };
 
   const handleProvisionRender = async () => {
@@ -185,7 +184,11 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
               className="form-input"
               placeholder="https://github.com/myorg/payments-api"
               value={repoUrl}
-              onChange={(e) => { setRepoUrl(e.target.value); setRepositoryCheck(null); }}
+              onChange={(e) => { 
+                setRepoUrl(e.target.value); 
+                applyRepoPresets(e.target.value);
+                setRepositoryCheck(null); 
+              }}
             />
             {!project && <>
               <button type="button" className="btn-secondary" disabled={checkingRepository || !repoUrl.trim()} onClick={handleCheckRepository} style={{ marginTop: '0.5rem', padding: '0.4rem 0.7rem' }}>
@@ -242,6 +245,11 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
                 {deploymentMode === 'frontend' && (project?.repo_name || repoUrl || '').toLowerCase().includes('hisaab') && (
                   <p style={{ fontSize: '0.76rem', color: '#34d399', marginTop: '0.45rem' }}>
                     ✓ Smart Preset Active: Configured Angular monorepo build command (<code>npm install &amp;&amp; npm run build:web</code>) and publish directory (<code>apps/web/dist/web/browser</code>). SPA rewrite routing is automatically enabled.
+                  </p>
+                )}
+                {deploymentMode === 'frontend' && (project?.repo_name || repoUrl || '').toLowerCase().includes('brinhack') && (
+                  <p style={{ fontSize: '0.76rem', color: '#34d399', marginTop: '0.45rem' }}>
+                    ✓ Smart Preset Active: Configured React app build command (<code>npm install &amp;&amp; npm run build</code>) and publish directory (<code>mock/build</code>).
                   </p>
                 )}
               </div>
