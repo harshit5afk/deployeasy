@@ -295,9 +295,24 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
                 onClick={() => {
                   setServiceType('web_service');
                   setDeploymentMode('backend');
-                  setRuntime('python');
-                  setBuildCommand('pip install -r requirements.txt');
-                  setStartCommand('streamlit run src/app.py --server.port $PORT --server.address 0.0.0.0');
+                  const lower = (repoUrl + ' ' + name).toLowerCase();
+                  if (lower.includes('brinhack') || lower.includes('studyapp')) {
+                    setRuntime('node');
+                    setBuildCommand('cd mock && npm install --legacy-peer-deps && CI=false npm run build');
+                    setStartCommand('npx serve -s mock/build -l $PORT');
+                  } else if (lower.includes('hisaab')) {
+                    setRuntime('node');
+                    setBuildCommand('npm ci && npm run build:all');
+                    setStartCommand('node apps/api/dist/main.js');
+                  } else if (lower.includes('ecosort') || lower.includes('ecoai') || lower.includes('streamlit') || lower.includes('python')) {
+                    setRuntime('python');
+                    setBuildCommand('pip install -r requirements.txt');
+                    setStartCommand('streamlit run src/app.py --server.port $PORT --server.address 0.0.0.0');
+                  } else {
+                    setRuntime('node');
+                    setBuildCommand('npm install');
+                    setStartCommand('npm start');
+                  }
                 }}
                 style={{
                   padding: '0.85rem',
@@ -309,29 +324,76 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                  <span style={{ fontSize: '1.2rem' }}>🐍</span>
+                  <span style={{ fontSize: '1.2rem' }}>⚙️</span>
                   <span style={{ fontWeight: 700, fontSize: '0.9rem', color: serviceType === 'web_service' ? '#a855f7' : 'var(--text-heading)' }}>
-                    Web Service (Python / AI / Backend)
+                    Web Service (Active Server)
                   </span>
                 </div>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-                  Python, Streamlit, Flask, Node.js Backend API.<br />
-                  <em>Jaise: EcoSortAI, Machine Learning apps.</em>
+                  Python (Streamlit), Node.js, Express, Full-stack servers.<br />
+                  <em>24/7 backend cloud process with custom start command.</em>
                 </p>
                 <div style={{ marginTop: '0.4rem', fontSize: '0.7rem', color: '#c084fc' }}>
-                  Runs: <code style={{ color: '#a855f7' }}>streamlit run src/app.py</code>
+                  Runs: <code style={{ color: '#a855f7' }}>{startCommand || 'npm start'}</code>
                 </div>
               </div>
 
             </div>
             {serviceType === 'web_service' && (
-              <p style={{ fontSize: '0.75rem', color: '#34d399', marginTop: '0.45rem' }}>
-                ✓ Configured for Python & Streamlit Web Service (`pip install -r requirements.txt` ➔ `streamlit run`)
-              </p>
+              <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.75rem', color: '#c084fc', fontWeight: 600 }}>Runtime:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRuntime('node');
+                    const lower = (repoUrl + ' ' + name).toLowerCase();
+                    if (lower.includes('brinhack') || lower.includes('studyapp')) {
+                      setBuildCommand('cd mock && npm install --legacy-peer-deps && CI=false npm run build');
+                      setStartCommand('npx serve -s mock/build -l $PORT');
+                    } else {
+                      setBuildCommand('npm install');
+                      setStartCommand('npm start');
+                    }
+                  }}
+                  style={{
+                    fontSize: '0.72rem',
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '4px',
+                    border: runtime === 'node' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.2)',
+                    background: runtime === 'node' ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
+                    color: runtime === 'node' ? '#38bdf8' : 'var(--text-dim)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ⚡ Node.js
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRuntime('python');
+                    setBuildCommand('pip install -r requirements.txt');
+                    setStartCommand('streamlit run src/app.py --server.port $PORT --server.address 0.0.0.0');
+                  }}
+                  style={{
+                    fontSize: '0.72rem',
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: '4px',
+                    border: runtime === 'python' ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.2)',
+                    background: runtime === 'python' ? 'rgba(52, 211, 153, 0.2)' : 'transparent',
+                    color: runtime === 'python' ? '#34d399' : 'var(--text-dim)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🐍 Python
+                </button>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  ({runtime === 'node' ? 'Node Web Server' : 'Python Web Server'})
+                </span>
+              </div>
             )}
             {serviceType === 'static_site' && (
               <p style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '0.45rem' }}>
-                ✓ Configured for Frontend Static Site (`npm run build` ➔ CDN)
+                ✓ Configured for Frontend Static Site (`npm run build` ➔ Global CDN)
               </p>
             )}
           </div>
