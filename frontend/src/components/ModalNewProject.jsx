@@ -31,11 +31,11 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
       }
     } else if (lower.includes('brinhack')) {
       if (mode === 'frontend') {
-        setBuildCommand('npm install && npm run build');
+        setBuildCommand('cd mock && npm install && npm run build');
         setPublishPath('mock/build');
       } else {
-        setBuildCommand('npm install');
-        setStartCommand('npm start');
+        setBuildCommand('cd mock && npm install');
+        setStartCommand('npm start --prefix mock');
       }
     } else {
       if (mode === 'frontend') {
@@ -249,7 +249,7 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
                 )}
                 {deploymentMode === 'frontend' && (project?.repo_name || repoUrl || '').toLowerCase().includes('brinhack') && (
                   <p style={{ fontSize: '0.76rem', color: '#34d399', marginTop: '0.45rem' }}>
-                    ✓ Smart Preset Active: Configured React app build command (<code>npm install &amp;&amp; npm run build</code>) and publish directory (<code>mock/build</code>).
+                    ✓ Smart Preset Active: Configured React app build command (<code>cd mock &amp;&amp; npm install &amp;&amp; npm run build</code>) and publish directory (<code>mock/build</code>).
                   </p>
                 )}
               </div>
