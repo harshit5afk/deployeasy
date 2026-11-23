@@ -242,27 +242,56 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
             <input type="text" required className="form-input" placeholder="main" value={branch} onChange={(e) => setBranch(e.target.value)} />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Application Type</label>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-              <button
-                type="button"
-                className={serviceType === 'static_site' ? 'btn-primary' : 'btn-secondary'}
-                style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+          <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.4rem' }}>
+              What type of project is this? (Select Build Type) *
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
+              
+              {/* Card 1: Static Site */}
+              <div
                 onClick={() => {
                   setServiceType('static_site');
                   setDeploymentMode('frontend');
                   setRuntime('node');
-                  setBuildCommand('npm run build');
-                  setPublishPath('dist');
+                  const lower = (repoUrl + ' ' + name).toLowerCase();
+                  if (lower.includes('brinhack') || lower.includes('studyapp')) {
+                    setBuildCommand('cd mock && npm install --legacy-peer-deps && CI=false npm run build');
+                    setPublishPath('mock/build');
+                  } else if (lower.includes('hisaab')) {
+                    setBuildCommand('npm install && npm run build:web');
+                    setPublishPath('apps/web/dist/web/browser');
+                  } else {
+                    setBuildCommand('npm run build');
+                    setPublishPath('dist');
+                  }
+                }}
+                style={{
+                  padding: '0.85rem',
+                  borderRadius: '10px',
+                  border: serviceType === 'static_site' ? '2px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+                  background: serviceType === 'static_site' ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
                 }}
               >
-                🌐 Frontend (React / Static Site)
-              </button>
-              <button
-                type="button"
-                className={serviceType === 'web_service' && runtime === 'python' ? 'btn-primary' : 'btn-secondary'}
-                style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                  <span style={{ fontSize: '1.2rem' }}>🌐</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: serviceType === 'static_site' ? '#38bdf8' : 'var(--text-heading)' }}>
+                    Static Site (Frontend)
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  React, Vite, Angular, HTML/JS frontend apps.<br />
+                  <em>Jaise: Hisaab, StudyApp.</em>
+                </p>
+                <div style={{ marginTop: '0.4rem', fontSize: '0.7rem', color: '#94a3b8' }}>
+                  Build: <code style={{ color: '#38bdf8' }}>npm run build</code> (No server needed)
+                </div>
+              </div>
+
+              {/* Card 2: Web Service */}
+              <div
                 onClick={() => {
                   setServiceType('web_service');
                   setDeploymentMode('backend');
@@ -270,27 +299,39 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
                   setBuildCommand('pip install -r requirements.txt');
                   setStartCommand('streamlit run src/app.py --server.port $PORT --server.address 0.0.0.0');
                 }}
-              >
-                🐍 Python / Streamlit (AI Web Service)
-              </button>
-              <button
-                type="button"
-                className={serviceType === 'web_service' && runtime === 'node' ? 'btn-primary' : 'btn-secondary'}
-                style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
-                onClick={() => {
-                  setServiceType('web_service');
-                  setDeploymentMode('backend');
-                  setRuntime('node');
-                  setBuildCommand('npm install');
-                  setStartCommand('npm start');
+                style={{
+                  padding: '0.85rem',
+                  borderRadius: '10px',
+                  border: serviceType === 'web_service' ? '2px solid #a855f7' : '1px solid rgba(255, 255, 255, 0.1)',
+                  background: serviceType === 'web_service' ? 'rgba(168, 85, 247, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
                 }}
               >
-                ⚡ Node.js Backend API
-              </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                  <span style={{ fontSize: '1.2rem' }}>🐍</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: serviceType === 'web_service' ? '#a855f7' : 'var(--text-heading)' }}>
+                    Web Service (Python / AI / Backend)
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  Python, Streamlit, Flask, Node.js Backend API.<br />
+                  <em>Jaise: EcoSortAI, Machine Learning apps.</em>
+                </p>
+                <div style={{ marginTop: '0.4rem', fontSize: '0.7rem', color: '#c084fc' }}>
+                  Runs: <code style={{ color: '#a855f7' }}>streamlit run src/app.py</code>
+                </div>
+              </div>
+
             </div>
-            {serviceType === 'web_service' && runtime === 'python' && (
-              <p style={{ fontSize: '0.75rem', color: '#34d399', marginTop: '0.25rem' }}>
-                ✓ Configured for Python & Streamlit (`pip install -r requirements.txt` ➔ `streamlit run`)
+            {serviceType === 'web_service' && (
+              <p style={{ fontSize: '0.75rem', color: '#34d399', marginTop: '0.45rem' }}>
+                ✓ Configured for Python & Streamlit Web Service (`pip install -r requirements.txt` ➔ `streamlit run`)
+              </p>
+            )}
+            {serviceType === 'static_site' && (
+              <p style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '0.45rem' }}>
+                ✓ Configured for Frontend Static Site (`npm run build` ➔ CDN)
               </p>
             )}
           </div>
