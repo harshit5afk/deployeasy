@@ -71,6 +71,10 @@ def validate_target_url(url: str, allow_local_for_testing: bool = False) -> str:
     try:
         addr_info = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
     except socket.gaierror as exc:
+        # If hostname is a standard external internet domain (e.g. *.onrender.com, vercel, etc.),
+        # do not reject saving the project if DNS propagation is still in progress.
+        if "." in hostname and not any(hostname.endswith(s) for s in (".internal", ".local", ".localhost")):
+            return url
         raise SSRFValidationError(f"Could not resolve host '{hostname}': {exc}") from exc
 
     if not addr_info:

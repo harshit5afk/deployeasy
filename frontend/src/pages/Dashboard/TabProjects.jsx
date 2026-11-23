@@ -89,8 +89,28 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onE
                         {p.status?.toUpperCase() || 'OPERATIONAL'}
                       </span>
                     </td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: '#38bdf8' }}>
-                      {p.service_url || 'Not configured'}
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>
+                      {p.service_url ? (
+                        <a
+                          href={p.service_url.startsWith('http') ? p.service_url : `https://${p.service_url}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            color: '#38bdf8',
+                            textDecoration: 'none',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                          }}
+                          title="Click to open live website in new tab"
+                        >
+                          <span>{p.service_url}</span>
+                          <span style={{ fontSize: '0.9rem' }}>↗</span>
+                        </a>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>Not configured</span>
+                      )}
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>
                       {result ? (

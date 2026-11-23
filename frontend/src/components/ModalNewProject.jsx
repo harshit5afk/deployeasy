@@ -206,96 +206,39 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
           </div>
 
           <div className="form-group">
-            <label className="form-label">Production Service URL (required for deploy verification)</label>
-            <input type="url" className="form-input" placeholder="https://payments.example.com" value={serviceUrl} onChange={(e) => setServiceUrl(e.target.value)} />
+            <label className="form-label">Production Service URL (Website Link)</label>
+            <input
+              type="url"
+              className="form-input"
+              placeholder="https://your-app.onrender.com"
+              value={serviceUrl}
+              onChange={(e) => setServiceUrl(e.target.value)}
+            />
+            <p style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '0.35rem' }}>
+              💡 Live website ka URL dalein — save karte hi table mein click karke seedhe khol sakte hain!
+            </p>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Deploy Webhook / Integration URL (Secret)</label>
-            {project?.has_deploy_hook && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>A deploy hook is already saved. Leave blank to keep it, or enter a replacement.</p>}
-            <input type="url" className="form-input" placeholder="https://api.render.com/deploy/srv-12345?key=..." value={deployHookUrl} onChange={(e) => setDeployHookUrl(e.target.value)} />
-          </div>
-
-          {project && !project.render_service_created && !project.service_url && (
-            <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px' }}>
-              <strong>Create this app on Render</strong>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.45rem 0 0.8rem' }}>
-                This creates a new service and starts its first deployment on Render. DeployEasy needs RENDER_API_KEY and RENDER_OWNER_ID in its own Render environment. The free plan is selected; Render may require billing setup. Make sure the repository supports the commands below.
+            <label className="form-label">Deploy Webhook / Integration URL (Optional)</label>
+            {project?.has_deploy_hook && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                Deploy hook saved hai. Change karna ho toh naya link dalein, nahi toh blank chhod dein.
               </p>
-              <div className="form-group">
-                <label className="form-label">What do you want to deploy?</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
-                  <button type="button" className={deploymentMode === 'frontend' ? 'btn-primary' : 'btn-secondary'} aria-pressed={deploymentMode === 'frontend'} onClick={() => selectDeploymentMode('frontend')} style={{ justifyContent: 'center', padding: '0.7rem 0.5rem' }}>
-                    Frontend only
-                  </button>
-                  <button type="button" className={deploymentMode === 'full' ? 'btn-primary' : 'btn-secondary'} aria-pressed={deploymentMode === 'full'} onClick={() => selectDeploymentMode('full')} style={{ justifyContent: 'center', padding: '0.7rem 0.5rem' }}>
-                    Full app
-                  </button>
-                </div>
-                <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.55rem' }}>
-                  {deploymentMode === 'frontend'
-                    ? 'Publishes the built website as a static site. Set the build command and output folder for this repository.'
-                    : 'Runs a server/API as a web service. Full apps may also need database credentials and other environment variables in Render.'}
-                </p>
-                {deploymentMode === 'full' && project?.repo_name?.toLowerCase() === 'harshit5afk/hisaab' && (
-                  <p style={{ fontSize: '0.76rem', color: '#a5b4fc', marginTop: '0.45rem' }}>
-                    Hisaab build and start commands are prefilled from its repository README. Configure its database environment variables in Render after the service is created.
-                  </p>
-                )}
-                {deploymentMode === 'frontend' && (project?.repo_name || repoUrl || '').toLowerCase().includes('hisaab') && (
-                  <p style={{ fontSize: '0.76rem', color: '#34d399', marginTop: '0.45rem' }}>
-                    ✓ Smart Preset Active: Configured Angular monorepo build command (<code>npm install &amp;&amp; npm run build:web</code>) and publish directory (<code>apps/web/dist/web/browser</code>). SPA rewrite routing is automatically enabled.
-                  </p>
-                )}
-                {deploymentMode === 'frontend' && (project?.repo_name || repoUrl || '').toLowerCase().includes('brinhack') && (
-                  <p style={{ fontSize: '0.76rem', color: '#34d399', marginTop: '0.45rem' }}>
-                    ✓ Smart Preset Active: Configured React app build command (<code>cd mock &amp;&amp; npm install &amp;&amp; npm run build</code>) and publish directory (<code>mock/build</code>).
-                  </p>
-                )}
-              </div>
-              {serviceType === 'web_service' ? <>
-                <div className="form-group">
-                  <label className="form-label">Runtime</label>
-                  <select className="form-input" value={runtime} onChange={(e) => setRuntime(e.target.value)}>
-                    <option value="node">Node.js</option>
-                    <option value="python">Python</option>
-                    <option value="go">Go</option>
-                    <option value="ruby">Ruby</option>
-                    <option value="rust">Rust</option>
-                    <option value="elixir">Elixir</option>
-                    <option value="docker">Dockerfile at repository root</option>
-                  </select>
-                </div>
-                {runtime !== 'docker' && <>
-                  <div className="form-group">
-                    <label className="form-label">Build command</label>
-                    <input className="form-input" value={buildCommand} onChange={(e) => setBuildCommand(e.target.value)} placeholder="npm install" />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Start command</label>
-                    <input className="form-input" value={startCommand} onChange={(e) => setStartCommand(e.target.value)} placeholder="npm start" />
-                  </div>
-                </>}
-              </> : <>
-                <div className="form-group">
-                  <label className="form-label">Build command</label>
-                  <input className="form-input" value={buildCommand} onChange={(e) => setBuildCommand(e.target.value)} placeholder="npm run build" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Publish directory</label>
-                  <input className="form-input" value={publishPath} onChange={(e) => setPublishPath(e.target.value)} placeholder="dist" />
-                </div>
-              </>}
-              <button type="button" className="btn-primary" disabled={provisioning} onClick={handleProvisionRender}>
-                {provisioning ? 'Creating Render service...' : 'Create free Render service'}
-              </button>
-            </div>
-          )}
+            )}
+            <input
+              type="url"
+              className="form-input"
+              placeholder="https://api.render.com/deploy/srv-12345?key=..."
+              value={deployHookUrl}
+              onChange={(e) => setDeployHookUrl(e.target.value)}
+            />
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
             <button type="button" onClick={onClose} className="btn-secondary" style={{ padding: '0.55rem 1rem' }}>Cancel</button>
             <button type="submit" disabled={submitting} className="btn-primary" style={{ padding: '0.55rem 1.25rem' }}>
-              {submitting ? (project ? 'Saving...' : 'Connecting...') : (project ? 'Save Configuration' : 'Create Project')}
+              {submitting ? (project ? 'Saving...' : 'Connecting...') : (project ? 'Save Configuration' : 'Connect Service')}
             </button>
           </div>
         </form>
