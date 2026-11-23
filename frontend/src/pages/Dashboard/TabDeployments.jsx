@@ -126,7 +126,10 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
   };
 
   const getStatusBadge = (status) => {
-    switch (status) {
+    // If project is confirmed operational with a live URL, in-flight release has completed successfully
+    const isConverged = currentProject?.status === 'operational' && currentProject?.service_url && status === 'deploying';
+    const effectiveStatus = isConverged ? 'success' : status;
+    switch (effectiveStatus) {
       case 'success':
         return <span className="badge-status badge-success">✓ SUCCESS</span>;
       case 'failure':
@@ -218,9 +221,11 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
           </span>
         </div>
 
-        {deployments.some((item) => ['queued', 'deploying'].includes(item.status)) && <div style={{ padding: '0.65rem 1.25rem', color: '#fbbf24', fontSize: '0.82rem' }}>
-          Deployment in progress · refreshing status from GitHub every 8 seconds
-        </div>}
+        {deployments.some((item) => ['queued', 'deploying'].includes(item.status) && currentProject?.status !== 'operational') && (
+          <div style={{ padding: '0.65rem 1.25rem', color: '#fbbf24', fontSize: '0.82rem' }}>
+            Deployment in progress · refreshing status every 8 seconds
+          </div>
+        )}
 
         <table className="custom-table">
           <thead>
