@@ -27,7 +27,7 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
     if (text.includes('eco') || text.includes('omsing')) {
       return '67bc2e1f78ce16aba4ea4795cd3a8eaae2a611cb';
     }
-    if (text.includes('hisaab')) {
+    if (text.includes('hisaab') || text.includes('hissab')) {
       return '15dbea2e1e6a3220debab16a2ff95da39f5d395f';
     }
     if (deployments && deployments.length > 0 && deployments[0].commit_sha) {
@@ -40,7 +40,7 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
     if (currentProject) {
       setCommitSha(getProjectDefaultSha(currentProject));
     }
-  }, [activeProjectId]);
+  }, [activeProjectId, currentProject?.id, currentProject?.name]);
 
   const loadDeployments = async (pId, silent = false) => {
     if (!pId) return;
@@ -76,16 +76,17 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
 
   const handleTriggerDeploy = async () => {
     if (!activeProjectId) return;
-    const sha = commitSha.trim().toLowerCase();
+    const sha = (commitSha || getProjectDefaultSha(currentProject)).trim().toLowerCase();
     if (!/^[0-9a-f]{7,40}$/.test(sha)) {
       alert('Enter a valid commit SHA (at least 7 hexadecimal characters, e.g. 15dbea2...).');
       return;
     }
-    const project = projects.find((item) => item.id === activeProjectId);
+    const project = projects.find((item) => item.id === activeProjectId) || currentProject;
     setDeploying(true);
     try {
       await api.triggerDeploy(activeProjectId, { commit_sha: sha, branch: project?.branch || 'main' });
       await loadDeployments(activeProjectId);
+      api.probeHealth(activeProjectId).catch(() => {});
     } catch (err) {
       alert(err.message || 'Deploy failed');
     } finally {
@@ -248,8 +249,15 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
               </tr>
             ) : deployments.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                  No deployment history found. Trigger your first release above!
+                <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
+                  <div style={{ marginBottom: '0.85rem' }}>No deployment history found yet for {currentProject?.name || 'this project'}.</div>
+                  <button
+                    onClick={handleTriggerDeploy}
+                    className="btn-primary"
+                    style={{ padding: '0.45rem 1.1rem', fontSize: '0.82rem' }}
+                  >
+                    ⚡ Record Initial Production Release
+                  </button>
                 </td>
               </tr>
             ) : (
