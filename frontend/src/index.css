@@ -1096,10 +1096,11 @@ main {
 /* Footer */
 footer {
   border-top: 1px solid var(--border);
-  background: rgba(9, 10, 15, 0.95);
-  padding: 3.5rem 1.5rem 2.5rem;
+  background: var(--header-bg, rgba(9, 10, 15, 0.95));
+  padding: 2.5rem 1.5rem 2rem;
   font-size: 0.88rem;
   color: var(--text-dim);
+  transition: background 0.25s ease, border-color 0.25s ease;
 }
 
 .footer-container {
@@ -1114,12 +1115,15 @@ footer {
 
 .footer-links {
   display: flex;
+  align-items: center;
   gap: 1.5rem;
 }
 
 .footer-links a {
   color: var(--text-muted);
   text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.2s ease;
 }
 
 .footer-links a:hover {

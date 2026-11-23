@@ -15,7 +15,6 @@ export function Footer() {
           <Link to="/">Home</Link>
           <Link to="/dashboard">Dashboard</Link>
           <a href="/demo" target="_blank" rel="noreferrer">⚡ Live Demo Sandbox</a>
-          <a href="https://github.com/harshit5afk/deployeasy" target="_blank" rel="noreferrer">GitHub</a>
         </div>
       </div>
     </footer>
