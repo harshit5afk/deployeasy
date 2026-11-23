@@ -33,6 +33,20 @@ export default defineConfig({
       '/metrics': {
         target: 'http://127.0.0.1:8080',
         changeOrigin: true
+      },
+      // FastAPI's documentation pages fetch /openapi.json from the same
+      // origin, so proxy both the pages and schema during local development.
+      '/docs': {
+        target: 'http://127.0.0.1:8080',
+        changeOrigin: true
+      },
+      '/redoc': {
+        target: 'http://127.0.0.1:8080',
+        changeOrigin: true
+      },
+      '/openapi.json': {
+        target: 'http://127.0.0.1:8080',
+        changeOrigin: true
       }
     }
   },
