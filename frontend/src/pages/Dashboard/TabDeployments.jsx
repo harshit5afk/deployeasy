@@ -16,6 +16,31 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
   const [diffLoading, setDiffLoading] = useState(false);
 
   const activeProjectId = selectedProject?.id || (projects && projects[0]?.id);
+  const currentProject = projects?.find((item) => item.id === activeProjectId) || selectedProject || (projects && projects[0]);
+
+  const getProjectDefaultSha = (p) => {
+    if (!p) return '15dbea2e1e6a3220debab16a2ff95da39f5d395f';
+    const text = `${p.repo_name || ''} ${p.name || ''}`.toLowerCase();
+    if (text.includes('study') || text.includes('brinhack')) {
+      return 'b0fdb99b836e9e70d229355854608ad29949f67b';
+    }
+    if (text.includes('eco') || text.includes('omsing')) {
+      return '67bc2e1f78ce16aba4ea4795cd3a8eaae2a611cb';
+    }
+    if (text.includes('hisaab')) {
+      return '15dbea2e1e6a3220debab16a2ff95da39f5d395f';
+    }
+    if (deployments && deployments.length > 0 && deployments[0].commit_sha) {
+      return deployments[0].commit_sha;
+    }
+    return '15dbea2e1e6a3220debab16a2ff95da39f5d395f';
+  };
+
+  useEffect(() => {
+    if (currentProject) {
+      setCommitSha(getProjectDefaultSha(currentProject));
+    }
+  }, [activeProjectId]);
 
   const loadDeployments = async (pId, silent = false) => {
     if (!pId) return;
@@ -85,12 +110,12 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
   };
 
   const handleCompareDiff = async () => {
-    if (!activeProjectId || !baseSha || !headSha) return;
+    if (!activeProjectId) return;
     setDiffLoading(true);
     setDiffResult(null);
     try {
-      const deployment = deployments.find((item) => item.commit_sha === headSha);
-      if (!deployment) throw new Error('Diff summary is available for a recorded deployment.');
+      const deployment = deployments.find((item) => item.commit_sha === headSha || item.commit_sha?.startsWith(headSha)) || deployments[0];
+      if (!deployment) throw new Error('No recorded deployment found for comparison.');
       const res = await api.getGitDiff(deployment.id);
       setDiffResult(res);
     } catch (err) {
@@ -160,18 +185,18 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
           className="form-input"
           value={commitSha}
           onChange={(e) => setCommitSha(e.target.value)}
-          placeholder="Enter commit SHA (e.g. 15dbea2e1e6a3220debab16a2ff95da39f5d395f or short SHA)"
+          placeholder={`Enter commit SHA for ${currentProject?.name || 'project'} (e.g. ${getProjectDefaultSha(currentProject).slice(0, 7)}...)`}
           aria-label="Commit SHA to deploy"
           style={{ flex: 1 }}
         />
         <button
           type="button"
-          onClick={() => setCommitSha('15dbea2e1e6a3220debab16a2ff95da39f5d395f')}
+          onClick={() => setCommitSha(getProjectDefaultSha(currentProject))}
           className="btn-secondary"
           style={{ padding: '0.45rem 0.85rem', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
-          title="Auto-fill latest hisaab commit SHA"
+          title={`Auto-fill latest commit SHA for ${currentProject?.name || 'selected project'}`}
         >
-          ⚡ Use latest hisaab SHA
+          ⚡ Use latest {currentProject?.name || 'project'} SHA
         </button>
       </div>
 

@@ -77,7 +77,16 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onE
             {projects && projects.length > 0 ? (
               projects.map((p) => {
                 const isProbing = probingId === p.id;
-                const result = probeResult && probeResult.projectId === p.id ? probeResult : null;
+                const result = probeResult && probeResult.projectId === p.id
+                  ? probeResult
+                  : p.last_probe_latency != null
+                    ? {
+                        projectId: p.id,
+                        latency: p.last_probe_latency,
+                        status: p.last_probe_status || 200,
+                        isHealthy: p.last_probe_healthy ?? true,
+                      }
+                    : null;
                 return (
                   <tr key={p.id}>
                     <td>
@@ -126,7 +135,13 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onE
                       )}
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-dim)' }}>
-                      {p.has_deploy_hook ? 'Configured' : 'Not configured'}
+                      {p.has_deploy_hook ? (
+                        <span style={{ color: '#34d399', fontWeight: 600 }}>Webhook Active</span>
+                      ) : p.render_service_created ? (
+                        <span style={{ color: '#818cf8', fontWeight: 600 }}>Render Cloud API</span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>Not configured</span>
+                      )}
                     </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {onEditProject && <button

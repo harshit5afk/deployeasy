@@ -86,6 +86,24 @@ class Project(Base):
     def render_service_created(self) -> bool:
         return bool(self.render_service_id)
 
+    @property
+    def last_probe_latency(self) -> float | None:
+        if self.health_checks:
+            return round(self.health_checks[0].response_time_ms, 2)
+        return None
+
+    @property
+    def last_probe_status(self) -> int | None:
+        if self.health_checks:
+            return self.health_checks[0].status_code
+        return None
+
+    @property
+    def last_probe_healthy(self) -> bool | None:
+        if self.health_checks:
+            return self.health_checks[0].is_healthy
+        return None
+
 
 class Deployment(Base):
     __tablename__ = "deployments"

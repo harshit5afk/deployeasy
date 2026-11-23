@@ -90,6 +90,9 @@ class ProjectResponse(ProjectBase):
     owner_id: int | None = None
     has_deploy_hook: bool = False
     render_service_created: bool = False
+    last_probe_latency: Optional[float] = None
+    last_probe_status: Optional[int] = None
+    last_probe_healthy: Optional[bool] = None
     created_at: datetime
     updated_at: datetime
 

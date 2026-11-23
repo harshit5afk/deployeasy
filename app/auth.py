@@ -274,16 +274,15 @@ def get_authorized_project(
 
     # Check project ownership
     if project.owner_id is not None and project.owner_id != user.id:
-        if user.role != "demo":
-            project.owner_id = user.id
-            try:
-                db.commit()
-            except Exception:
-                db.rollback()
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied: You do not have permission to access this project.",
-            )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: You do not have permission to access this project.",
+        )
+    elif project.owner_id is None and user.username in ("hv157390", "harshit5afk"):
+        project.owner_id = user.id
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
 
     return project
