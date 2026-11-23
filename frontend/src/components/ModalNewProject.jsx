@@ -103,11 +103,29 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
   };
 
   const handleProvisionRender = async () => {
-    if (!project || provisioning) return;
+    if (provisioning) return;
     setProvisioning(true);
     setError(null);
     try {
-      const updated = await api.provisionRenderService(project.id, {
+      let targetProject = project;
+      if (!targetProject) {
+        let finalBranch = branch?.trim() || 'main';
+        try {
+          const checkedRepository = await api.checkGithubRepository(repoUrl);
+          if (checkedRepository?.default_branch && (!branch || branch === 'main')) {
+            finalBranch = checkedRepository.default_branch;
+          }
+        } catch (_) {}
+
+        targetProject = await api.createProject({
+          name: name.trim(),
+          repo_url: repoUrl.trim() || undefined,
+          branch: finalBranch,
+        });
+        if (onProjectCreated) onProjectCreated(targetProject);
+      }
+
+      const updated = await api.provisionRenderService(targetProject.id, {
         service_type: serviceType,
         runtime,
         region: 'singapore',
@@ -267,11 +285,29 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-            <button type="button" onClick={onClose} className="btn-secondary" style={{ padding: '0.55rem 1rem' }}>Cancel</button>
-            <button type="submit" disabled={submitting} className="btn-primary" style={{ padding: '0.55rem 1.25rem' }}>
-              {submitting ? (project ? 'Saving...' : 'Connecting...') : (project ? 'Save Configuration' : 'Connect Service')}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <button
+              type="button"
+              disabled={provisioning || submitting || !repoUrl.trim()}
+              onClick={handleProvisionRender}
+              className="btn-primary"
+              style={{
+                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                color: '#fff',
+                fontWeight: 700,
+                border: 'none',
+                padding: '0.55rem 1rem'
+              }}
+              title="Automatically creates this app on Render and fetches live URL via Render API"
+            >
+              {provisioning ? 'Provisioning Cloud...' : '🚀 Auto-Deploy on Render'}
             </button>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button type="button" onClick={onClose} className="btn-secondary" style={{ padding: '0.55rem 1rem' }}>Cancel</button>
+              <button type="submit" disabled={submitting || provisioning} className="btn-secondary" style={{ padding: '0.55rem 1.25rem' }}>
+                {submitting ? (project ? 'Saving...' : 'Connecting...') : (project ? 'Save Configuration' : 'Connect Existing')}
+              </button>
+            </div>
           </div>
         </form>
       </div>
