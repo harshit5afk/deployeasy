@@ -31,10 +31,10 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
       }
     } else if (lower.includes('brinhack')) {
       if (mode === 'frontend') {
-        setBuildCommand('cd mock && npm install && npm run build');
+        setBuildCommand('cd mock && npm install --legacy-peer-deps && CI=false npm run build');
         setPublishPath('mock/build');
       } else {
-        setBuildCommand('cd mock && npm install');
+        setBuildCommand('cd mock && npm install --legacy-peer-deps');
         setStartCommand('npm start --prefix mock');
       }
     } else {
