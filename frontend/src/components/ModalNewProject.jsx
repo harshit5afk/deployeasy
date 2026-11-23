@@ -128,11 +128,20 @@ export function ModalNewProject({ isOpen, onClose, onProjectCreated, project = n
         return;
       }
 
-      const checkedRepository = await api.checkGithubRepository(repoUrl);
+      let finalBranch = branch?.trim() || 'main';
+      try {
+        const checkedRepository = await api.checkGithubRepository(repoUrl);
+        if (checkedRepository?.default_branch && (!branch || branch === 'main')) {
+          finalBranch = checkedRepository.default_branch;
+        }
+      } catch (_) {
+        // Continue smoothly even if GitHub rate limits or repo check is unavailable
+      }
+
       const created = await api.createProject({
         name,
         repo_url: repoUrl || undefined,
-        branch: branch || checkedRepository.default_branch || 'main',
+        branch: finalBranch,
         service_url: serviceUrl || undefined,
         deploy_hook_url: deployHookUrl || undefined
       });
