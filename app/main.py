@@ -634,23 +634,55 @@ def list_projects(user: CurrentUser, db: DbSession):
     """List projects accessible to the authenticated user. Excludes deploy hook secrets."""
     if user.role == "admin":
         return db.query(Project).all()
-    projects = db.query(Project).filter(Project.owner_id == user.id).all()
+
+    # 1. First find projects owned by the user or unassigned
+    projects = db.query(Project).filter(
+        (Project.owner_id == user.id) | (Project.owner_id.is_(None))
+    ).all()
+
     if not projects and user.role != "demo":
-        # Ensure hisaab project is automatically pre-configured for the developer!
-        default_proj = Project(
-            name="hisaab",
-            repo_name="harshit5afk/hisaab",
-            branch="main",
-            service_url="https://hisaab-1-6r3c.onrender.com",
-            owner_id=user.id,
-            status="operational",
-            build_command="npm install && npm run build:web",
-            publish_dir="apps/web/dist/web/browser",
-        )
-        db.add(default_proj)
-        db.commit()
-        db.refresh(default_proj)
-        projects = [default_proj]
+        # 2. Check if any existing projects exist in the database (e.g. created before relogin or restart)
+        existing_all = db.query(Project).all()
+        if existing_all:
+            for p in existing_all:
+                p.owner_id = user.id
+            try:
+                db.commit()
+                projects = existing_all
+            except Exception:
+                db.rollback()
+                projects = existing_all
+        else:
+            # 3. Create default hisaab project safely with no duplicate key collision
+            existing_hisaab = db.query(Project).filter(Project.repo_name == "harshit5afk/hisaab").first()
+            if existing_hisaab:
+                existing_hisaab.owner_id = user.id
+                try:
+                    db.commit()
+                    projects = [existing_hisaab]
+                except Exception:
+                    db.rollback()
+                    projects = [existing_hisaab]
+            else:
+                default_proj = Project(
+                    name="hisaab",
+                    repo_name="harshit5afk/hisaab",
+                    branch="main",
+                    service_url="https://hisaab-1-gib7.onrender.com",
+                    owner_id=user.id,
+                    status="operational",
+                    build_command="npm install && npm run build:web",
+                    publish_dir="apps/web/dist/web/browser",
+                )
+                db.add(default_proj)
+                try:
+                    db.commit()
+                    db.refresh(default_proj)
+                    projects = [default_proj]
+                except Exception:
+                    db.rollback()
+                    projects = db.query(Project).all()
+
     return projects
 
 
@@ -679,7 +711,23 @@ def create_project(payload: ProjectCreate, user: CurrentUser, db: DbSession, csr
 
     existing = db.query(Project).filter(Project.repo_name == payload.repo_name).first()
     if existing:
-        raise HTTPException(status_code=400, detail="A project for this repository already exists")
+        # Re-claim and update existing project seamlessly rather than rejecting with 400
+        existing.owner_id = user.id
+        if payload.name:
+            existing.name = payload.name
+        if payload.branch:
+            existing.branch = payload.branch
+        if payload.service_url:
+            existing.service_url = payload.service_url
+        if payload.deploy_hook_url:
+            existing.deploy_hook_url = payload.deploy_hook_url
+        try:
+            db.commit()
+            db.refresh(existing)
+            return existing
+        except Exception:
+            db.rollback()
+            return existing
 
     project = Project(
         name=payload.name,

@@ -73,11 +73,35 @@ export function DashboardPage() {
         return;
       }
       if (ovData) setOverview(ovData);
-      if (projData) {
+      if (projData && projData.length > 0) {
         setProjects(projData);
+        try {
+          localStorage.setItem('deployeasy_saved_projects', JSON.stringify(projData));
+        } catch (_) {}
         const savedProjId = sessionStorage.getItem('deployeasy_selected_project_id');
         const match = projData.find((p) => String(p.id) === savedProjId);
         setSelectedProject((prev) => prev || match || (projData.length > 0 ? projData[0] : null));
+      } else {
+        // Fallback: restore from localStorage cache if container restarted or session refreshed
+        try {
+          const cached = JSON.parse(localStorage.getItem('deployeasy_saved_projects') || '[]');
+          if (cached && cached.length > 0) {
+            setProjects(cached);
+            setSelectedProject((prev) => prev || cached[0]);
+            // Background restore to backend
+            for (const cp of cached) {
+              if (cp.repo_name) {
+                api.createProject({
+                  name: cp.name,
+                  repo_url: `https://github.com/${cp.repo_name}`,
+                  branch: cp.branch || 'main',
+                  service_url: cp.service_url || undefined,
+                  deploy_hook_url: cp.deploy_hook_url || undefined,
+                }).catch(() => {});
+              }
+            }
+          }
+        } catch (_) {}
       }
       setCurrentUser(userData);
       if (userData?.role === 'admin') {
@@ -257,12 +281,20 @@ export function DashboardPage() {
           project={projectToEdit}
           onClose={() => { setIsModalOpen(false); setProjectToEdit(null); }}
           onProjectCreated={(newProj) => {
-            setProjects((prev) => [newProj, ...prev]);
+            setProjects((prev) => {
+              const updated = [newProj, ...prev];
+              try { localStorage.setItem('deployeasy_saved_projects', JSON.stringify(updated)); } catch (_) {}
+              return updated;
+            });
             setSelectedProject(newProj);
             setActiveTab('projects');
           }}
           onProjectUpdated={(updated) => {
-            setProjects((prev) => prev.map((project) => project.id === updated.id ? updated : project));
+            setProjects((prev) => {
+              const nextList = prev.map((project) => project.id === updated.id ? updated : project);
+              try { localStorage.setItem('deployeasy_saved_projects', JSON.stringify(nextList)); } catch (_) {}
+              return nextList;
+            });
             setSelectedProject(updated);
           }}
         />
