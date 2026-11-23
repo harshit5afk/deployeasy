@@ -42,6 +42,9 @@ export async function apiFetch(url, options = {}) {
     err.status = res.status;
     throw err;
   }
+  if (res.status === 204) {
+    return null;
+  }
   return res.json();
 }
 
@@ -81,6 +84,9 @@ export const api = {
   updateProject: (id, data) => apiFetch(`/api/projects/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data)
+  }),
+  deleteProject: (id) => apiFetch(`/api/projects/${id}`, {
+    method: 'DELETE'
   }),
   provisionRenderService: (id, data) => apiFetch(`/api/projects/${id}/provision-render`, {
     method: 'POST',

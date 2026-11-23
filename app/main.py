@@ -650,8 +650,6 @@ def list_projects(user: CurrentUser, db: DbSession):
                 service_url="https://hisaab-1-gib7.onrender.com",
                 owner_id=user.id,
                 status="operational",
-                build_command="npm install && npm run build:web",
-                publish_dir="apps/web/dist/web/browser",
             )
             db.add(default_proj)
             all_projects.insert(0, default_proj)
@@ -761,6 +759,23 @@ def update_project(
     db.commit()
     db.refresh(project)
     return project
+
+
+@app.delete("/api/projects/{project_id}", status_code=204)
+def delete_project(
+    project_id: int,
+    user: CurrentUser,
+    db: DbSession,
+    csrf: CsrfProtect = None,
+):
+    """Delete project and associated telemetry records."""
+    project = get_authorized_project(project_id, user, db, require_write=True)
+    db.query(Deployment).filter(Deployment.project_id == project_id).delete()
+    db.query(HealthCheck).filter(HealthCheck.project_id == project_id).delete()
+    db.query(SecurityScan).filter(SecurityScan.project_id == project_id).delete()
+    db.delete(project)
+    db.commit()
+    return Response(status_code=204)
 
 
 @app.post("/api/projects/{project_id}/provision-render", response_model=ProjectResponse)

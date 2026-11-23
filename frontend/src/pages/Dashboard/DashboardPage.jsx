@@ -150,6 +150,25 @@ export function DashboardPage() {
     setIsModalOpen(true);
   };
 
+  const handleDeleteProject = async (projectId) => {
+    if (!window.confirm("Are you sure you want to remove this project from DeployEasy?")) {
+      return;
+    }
+    try {
+      await api.deleteProject(projectId);
+      setProjects((prev) => {
+        const updated = prev.filter((p) => p.id !== projectId);
+        try { localStorage.setItem('deployeasy_saved_projects', JSON.stringify(updated)); } catch (_) {}
+        return updated;
+      });
+      if (selectedProject?.id === projectId) {
+        setSelectedProject(null);
+      }
+    } catch (e) {
+      alert("Failed to remove project: " + (e.message || e));
+    }
+  };
+
   return (
     <>
       <div className="ambient-glow"></div>
@@ -232,6 +251,7 @@ export function DashboardPage() {
                 onRefreshProjects={loadData}
                 onOpenNewProject={activeUser?.role === 'demo' ? undefined : openNewProject}
                 onEditProject={activeUser?.role === 'demo' ? undefined : openProjectSettings}
+                onDeleteProject={activeUser?.role === 'demo' ? undefined : handleDeleteProject}
               />
             )}
 

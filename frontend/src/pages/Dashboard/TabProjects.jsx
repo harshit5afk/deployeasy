@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../../api';
 
-export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onEditProject }) {
+export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onEditProject, onDeleteProject }) {
   const [probingId, setProbingId] = useState(null);
   const [probeResult, setProbeResult] = useState(null);
 
@@ -128,7 +128,7 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onE
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-dim)' }}>
                       {p.has_deploy_hook ? 'Configured' : 'Not configured'}
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {onEditProject && <button
                         onClick={() => onEditProject && onEditProject(p)}
                         className="btn-secondary"
@@ -140,10 +140,25 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onE
                         onClick={() => handleProbe(p.id)}
                         disabled={isProbing}
                         className="btn-secondary"
-                        style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem' }}
+                        style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', marginRight: onDeleteProject ? '0.4rem' : '0' }}
                       >
                         {isProbing ? 'Probing...' : '🩺 Probe /health'}
                       </button>
+                      {onDeleteProject && (
+                        <button
+                          onClick={() => onDeleteProject(p.id)}
+                          className="btn-secondary"
+                          style={{
+                            padding: '0.3rem 0.6rem',
+                            fontSize: '0.75rem',
+                            color: '#f87171',
+                            borderColor: 'rgba(239, 68, 68, 0.3)'
+                          }}
+                          title="Remove service from DeployEasy"
+                        >
+                          Remove
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
