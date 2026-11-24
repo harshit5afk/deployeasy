@@ -67,18 +67,6 @@ export function LandingPage() {
                 Sign Up 🚀
               </Link>
             )}
-            <a
-              href="https://github.com/harshit5afk/deployeasy"
-              target="_blank"
-              rel="noreferrer"
-              className="btn-secondary"
-              style={{
-                padding: '0.85rem 1.4rem',
-                fontSize: '0.95rem',
-              }}
-            >
-              GitHub Repository
-            </a>
           </div>
 
           {/* 6-Stage Pipeline Graphic */}
