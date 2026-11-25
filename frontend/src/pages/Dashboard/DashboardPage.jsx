@@ -11,7 +11,6 @@ import { TabEnvValidator } from './TabEnvValidator';
 import { TabSecurity } from './TabSecurity';
 import { TabFinOps } from './TabFinOps';
 import { TabDiagnostics } from './TabDiagnostics';
-import { TabConsole } from './TabConsole';
 import { AdminDashboard } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api';
@@ -26,7 +25,7 @@ export function DashboardPage() {
   const [activeTab, setActiveTab] = useState(() => {
     if (isAdmin) return 'admin';
     const saved = sessionStorage.getItem('deployeasy_active_tab');
-    return saved && saved !== 'admin' ? saved : 'projects';
+    return saved && saved !== 'admin' && saved !== 'console' ? saved : 'projects';
   });
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
@@ -43,8 +42,7 @@ export function DashboardPage() {
     { id: 'env', label: 'Env Validator' },
     { id: 'security', label: 'Security' },
     { id: 'costs', label: 'FinOps' },
-    { id: 'diagnostics', label: 'Diagnostics & Webhooks' },
-    { id: 'console', label: 'API Console' }
+    { id: 'diagnostics', label: 'Diagnostics & Webhooks' }
   ];
 
   const handleTabChange = (newTab) => {
@@ -293,10 +291,6 @@ export function DashboardPage() {
                 projects={projects}
                 selectedProject={selectedProject}
               />
-            )}
-
-            {activeTab === 'console' && (
-              <TabConsole />
             )}
           </>
         )}
