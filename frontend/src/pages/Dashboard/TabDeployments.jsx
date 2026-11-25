@@ -236,20 +236,19 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
               <th>Status</th>
               <th>Duration</th>
               <th>Deployed At</th>
-              <th>Workflow</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                   Loading deployments...
                 </td>
               </tr>
             ) : deployments.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
+                <td colSpan="6" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
                   <div style={{ marginBottom: '0.85rem' }}>No deployment history found yet for {currentProject?.name || 'this project'}.</div>
                   <button
                     onClick={handleTriggerDeploy}
@@ -277,12 +276,6 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
                   </td>
                   <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     {d.created_at ? new Date(d.created_at).toLocaleTimeString() : 'Recent'}
-                  </td>
-                  <td>
-                    {d.workflow_run_id && (() => {
-                      const project = projects.find((item) => item.id === d.project_id);
-                      return project ? <a href={`https://github.com/${project.repo_name}/actions/runs/${d.workflow_run_id}`} target="_blank" rel="noreferrer">View Actions run</a> : 'GitHub Actions';
-                    })()}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <details style={{ textAlign: 'left', marginBottom: d.status === 'success' ? '0.4rem' : 0 }}>
