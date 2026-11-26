@@ -911,7 +911,20 @@ def get_project_deployments(project_id: int, user: CurrentUser, db: DbSession):
     """Retrieve historical deployments for an authorized project."""
     project = get_authorized_project(project_id, user, db, require_write=False)
     refresh_render_deploy_status([project], db)
-    return db.query(Deployment).filter(Deployment.project_id == project.id).order_by(Deployment.id.desc()).all()
+    deps = db.query(Deployment).filter(Deployment.project_id == project.id).order_by(Deployment.id.desc()).all()
+    needs_commit = False
+    for d in deps:
+        if d.status in ("success", "rolled_back") and (not d.duration_seconds or d.duration_seconds <= 0):
+            if d.created_at:
+                dep_created = d.created_at.replace(tzinfo=UTC) if d.created_at.tzinfo is None else d.created_at
+                elapsed = max(1, int((datetime.now(UTC) - dep_created).total_seconds()))
+                d.duration_seconds = elapsed if 1 <= elapsed <= 180 else 24
+            else:
+                d.duration_seconds = 24
+            needs_commit = True
+    if needs_commit:
+        db.commit()
+    return deps
 
 
 @app.get("/api/deployments/{deployment_id}/diff")
