@@ -1,5 +1,6 @@
 import React from 'react';
 import { MetricCard } from '../../components/MetricCard';
+import { parseDate } from './TabDeployments';
 
 export function TabOverview({ overview, projects, onSwitchTab }) {
   const total = overview?.total_projects ?? projects?.length ?? 0;
@@ -27,7 +28,7 @@ export function TabOverview({ overview, projects, onSwitchTab }) {
     <div className="telemetry-card" style={{ marginTop: '1rem' }}>
       <div className="telemetry-header"><div className="telemetry-title">Recent deployments</div><button className="btn-secondary" onClick={() => onSwitchTab('deployments')}>View deployments</button></div>
       {(overview?.recent_deployments || []).length === 0 ? <p>No deployment records yet.</p> : <table className="custom-table"><thead><tr><th>Project</th><th>Commit</th><th>Status</th><th>Created</th></tr></thead><tbody>
-        {overview.recent_deployments.map((dep) => <tr key={dep.id}><td>{projects?.find((project) => project.id === dep.project_id)?.name || `Project ${dep.project_id}`}</td><td>{dep.commit_sha?.slice(0, 8)}</td><td>{dep.status}</td><td>{dep.created_at ? new Date(dep.created_at).toLocaleString() : '—'}</td></tr>)}
+        {overview.recent_deployments.map((dep) => <tr key={dep.id}><td>{projects?.find((project) => project.id === dep.project_id)?.name || `Project ${dep.project_id}`}</td><td>{dep.commit_sha?.slice(0, 8)}</td><td>{dep.status}</td><td>{dep.created_at ? parseDate(dep.created_at).toLocaleString() : '—'}</td></tr>)}
       </tbody></table>}
     </div>
     <div style={{ marginTop: '1rem' }}><button className="btn-secondary" onClick={() => onSwitchTab('readiness')}>Review deployment readiness</button></div>

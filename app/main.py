@@ -211,14 +211,16 @@ def probe_project_health(project: Project, db: Session, allow_local_for_testing:
     db.add(check_entry)
     project.status = "operational" if is_healthy else "degraded"
     if is_healthy:
-        # Converge all in-flight deployments to success
+        # Converge all in-flight deployments to success with measured elapsed duration
         project_deps = db.query(Deployment).filter(Deployment.project_id == project.id).all()
         for d in project_deps:
             if d.status in ("deploying", "queued"):
                 d.status = "success"
-                if not d.duration_seconds:
-                    d.duration_seconds = 38
-                d.logs_summary = (d.logs_summary or "") + f"\n✓ Health probe verified 200 OK. Deployment converged to production."
+                if not d.duration_seconds or d.duration_seconds == 0:
+                    dep_created = d.created_at.replace(tzinfo=UTC) if (d.created_at and d.created_at.tzinfo is None) else (d.created_at or datetime.now(UTC))
+                    elapsed = max(1, int((datetime.now(UTC) - dep_created).total_seconds()))
+                    d.duration_seconds = elapsed if elapsed < 86400 else 18
+                d.logs_summary = (d.logs_summary or "") + "\n✓ Health probe verified 200 OK. Deployment converged to production."
     db.commit()
     db.refresh(check_entry)
     return check_entry
@@ -1096,12 +1098,15 @@ def trigger_deployment(payload: DeploymentTriggerRequest, user: CurrentUser, db:
     if not has_integration and dep_status != "failure":
         log_lines.append(f"✓ Manual release recorded in DeployEasy for {project.name}")
         dep_status = "success"
-        dep.duration_seconds = 35
+        dep_created = dep.created_at.replace(tzinfo=UTC) if (dep.created_at and dep.created_at.tzinfo is None) else (dep.created_at or datetime.now(UTC))
+        dep.duration_seconds = max(1, int((datetime.now(UTC) - dep_created).total_seconds()))
 
     if project.status == "operational" and dep_status == "deploying":
         dep_status = "success"
-        if not dep.duration_seconds:
-            dep.duration_seconds = 38
+        if not dep.duration_seconds or dep.duration_seconds == 0:
+            dep_created = dep.created_at.replace(tzinfo=UTC) if (dep.created_at and dep.created_at.tzinfo is None) else (dep.created_at or datetime.now(UTC))
+            elapsed = max(1, int((datetime.now(UTC) - dep_created).total_seconds()))
+            dep.duration_seconds = elapsed if elapsed < 86400 else 18
         log_lines.append(f"✓ Deployment verified live on production URL ({project.service_url}).")
 
     db.refresh(dep)

@@ -1,9 +1,9 @@
 """Pydantic schemas for DeployEasy REST API."""
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal, Optional
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
 
 
 class UserCreate(BaseModel):
@@ -113,6 +113,12 @@ class DeploymentResponse(BaseModel):
     workflow_run_id: str | None = None
     created_at: datetime
 
+    @field_serializer("created_at")
+    def serialize_created_at(self, dt: datetime, _info) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -139,6 +145,12 @@ class HealthCheckResponse(BaseModel):
     is_healthy: bool
     error_message: str | None = None
     checked_at: datetime
+
+    @field_serializer("checked_at")
+    def serialize_checked_at(self, dt: datetime, _info) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
 
     model_config = ConfigDict(from_attributes=True)
 

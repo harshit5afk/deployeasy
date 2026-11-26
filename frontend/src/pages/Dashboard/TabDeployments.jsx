@@ -1,6 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api';
 
+export function parseDate(dateInput) {
+  if (!dateInput) return null;
+  if (dateInput instanceof Date) return isNaN(dateInput.getTime()) ? null : dateInput;
+  let s = String(dateInput).trim();
+  if (!s) return null;
+  // If the ISO string has no timezone offset or Z, treat as UTC from backend
+  if (!s.endsWith('Z') && !s.includes('+') && !/[0-9]T[0-9].*[-+][0-9]{2}/.test(s)) {
+    s = s.replace(' ', 'T') + 'Z';
+  }
+  const parsed = new Date(s);
+  return isNaN(parsed.getTime()) ? new Date(dateInput) : parsed;
+}
+
+export function formatDuration(seconds) {
+  if (seconds === null || seconds === undefined || isNaN(seconds)) return '—';
+  const sec = Math.max(0, Math.floor(seconds));
+  if (sec < 60) return `${sec}s`;
+  const mins = Math.floor(sec / 60);
+  const remSec = sec % 60;
+  return `${mins}m ${remSec}s`;
+}
+
+export function formatRelativeTime(dateInput, nowMs = Date.now()) {
+  const d = parseDate(dateInput);
+  if (!d) return 'Recent';
+  const diffSec = Math.floor((nowMs - d.getTime()) / 1000);
+  if (diffSec < 0) return 'Just now';
+  if (diffSec < 5) return 'Just now';
+  if (diffSec < 60) return `${diffSec}s ago`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return d.toLocaleDateString();
+}
+
+export function formatLocalTime(dateInput) {
+  const d = parseDate(dateInput);
+  if (!d) return '—';
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+export function formatFullDateTime(dateInput) {
+  const d = parseDate(dateInput);
+  if (!d) return '';
+  return d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'medium' });
+}
+
 export function TabDeployments({ projects, selectedProject, onSelectProject }) {
   const [deployments, setDeployments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -8,6 +58,7 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
   const [rollbackSha, setRollbackSha] = useState('');
   const [commitSha, setCommitSha] = useState('');
   const [rollbackMsg, setRollbackMsg] = useState(null);
+  const [now, setNow] = useState(Date.now());
 
   // Git Diff tool state
   const [baseSha, setBaseSha] = useState('');
@@ -15,8 +66,20 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
   const [diffResult, setDiffResult] = useState(null);
   const [diffLoading, setDiffLoading] = useState(false);
 
+  // 1-second live ticker for running deployment durations and real-world timestamps
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const activeProjectId = selectedProject?.id || (projects && projects[0]?.id);
   const currentProject = projects?.find((item) => item.id === activeProjectId) || selectedProject || (projects && projects[0]);
+
+  const isDeployRunning = (d) => {
+    if (!d) return false;
+    const isConverged = currentProject?.status === 'operational' && currentProject?.service_url && d.status === 'deploying';
+    return !isConverged && ['queued', 'deploying'].includes(d.status);
+  };
 
   const getProjectDefaultSha = (p) => {
     if (!p) return '15dbea2e1e6a3220debab16a2ff95da39f5d395f';
@@ -68,11 +131,14 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
     }
   }, [activeProjectId]);
 
+  // Adaptive polling: 4s when a release is deploying, 8s when idle
   useEffect(() => {
     if (!activeProjectId) return undefined;
-    const timer = setInterval(() => loadDeployments(activeProjectId, true), 8000);
+    const hasActive = deployments.some((d) => isDeployRunning(d));
+    const intervalTime = hasActive ? 4000 : 8000;
+    const timer = setInterval(() => loadDeployments(activeProjectId, true), intervalTime);
     return () => clearInterval(timer);
-  }, [activeProjectId]);
+  }, [activeProjectId, deployments, currentProject?.status]);
 
   const handleTriggerDeploy = async () => {
     if (!activeProjectId) return;
@@ -126,8 +192,8 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
     }
   };
 
-  const getStatusBadge = (status) => {
-    // If project is confirmed operational with a live URL, in-flight release has completed successfully
+  const getStatusBadge = (d) => {
+    const status = d?.status;
     const isConverged = currentProject?.status === 'operational' && currentProject?.service_url && status === 'deploying';
     const effectiveStatus = isConverged ? 'success' : status;
     switch (effectiveStatus) {
@@ -138,7 +204,12 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
       case 'rolled_back':
         return <span className="badge-status badge-rolled-back">⏪ ROLLED BACK</span>;
       default:
-        return <span className="badge-status badge-deploying">⏳ {status?.toUpperCase()}</span>;
+        return (
+          <span className="badge-status badge-deploying" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span className="pulse-dot-cyan" />
+            ⏳ {status?.toUpperCase() || 'DEPLOYING'}
+          </span>
+        );
     }
   };
 
@@ -222,9 +293,10 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
           </span>
         </div>
 
-        {deployments.some((item) => ['queued', 'deploying'].includes(item.status) && currentProject?.status !== 'operational') && (
-          <div style={{ padding: '0.65rem 1.25rem', color: '#fbbf24', fontSize: '0.82rem' }}>
-            Deployment in progress · refreshing status every 8 seconds
+        {deployments.some((item) => isDeployRunning(item)) && (
+          <div style={{ padding: '0.65rem 1.25rem', color: '#38bdf8', fontSize: '0.82rem', background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '8px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="pulse-dot-cyan" />
+            Deployment in progress · live timer active · auto-syncing every 4 seconds
           </div>
         )}
 
@@ -260,40 +332,62 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
                 </td>
               </tr>
             ) : (
-              deployments.map((d, idx) => (
-                <tr key={d.id}>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-main)' }}>
-                    #{String(deployments.length - idx).padStart(2, '0')}
-                  </td>
-                  <td>
-                    <span style={{ fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.06)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', color: '#c7d2fe' }}>
-                      {d.commit_sha ? d.commit_sha.substring(0, 8) : 'unknown'}
-                    </span>
-                  </td>
-                  <td>{getStatusBadge(d.status)}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                    {d.duration_seconds ? `${d.duration_seconds}s` : '—'}
-                  </td>
-                  <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    {d.created_at ? new Date(d.created_at).toLocaleTimeString() : 'Recent'}
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <details style={{ textAlign: 'left', marginBottom: d.status === 'success' ? '0.4rem' : 0 }}>
-                      <summary style={{ cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.75rem' }}>Activity</summary>
-                      <pre style={{ whiteSpace: 'pre-wrap', maxWidth: '340px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{d.logs_summary || 'No activity details recorded yet.'}</pre>
-                    </details>
-                    {d.status === 'success' && (
-                      <button
-                        onClick={() => handleRollback(d.commit_sha)}
-                        className="btn-secondary"
-                        style={{ padding: '0.28rem 0.65rem', fontSize: '0.75rem', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}
-                      >
-                        ⏪ Rollback
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))
+              deployments.map((d, idx) => {
+                const running = isDeployRunning(d);
+                const createdTime = parseDate(d.created_at)?.getTime() || now;
+                const liveElapsed = Math.max(0, Math.floor((now - createdTime) / 1000));
+
+                return (
+                  <tr key={d.id}>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-main)' }}>
+                      #{String(deployments.length - idx).padStart(2, '0')}
+                    </td>
+                    <td>
+                      <span style={{ fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.06)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', color: '#c7d2fe' }}>
+                        {d.commit_sha ? d.commit_sha.substring(0, 8) : 'unknown'}
+                      </span>
+                    </td>
+                    <td>{getStatusBadge(d)}</td>
+                    <td style={{ fontFamily: 'var(--font-mono)' }}>
+                      {running ? (
+                        <span style={{ color: '#38bdf8', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span className="pulse-dot-cyan" />
+                          {formatDuration(liveElapsed)}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          {formatDuration(d.duration_seconds != null && d.duration_seconds > 0 ? d.duration_seconds : liveElapsed)}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                          {formatRelativeTime(d.created_at, now)}
+                        </span>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }} title={formatFullDateTime(d.created_at)}>
+                          {formatLocalTime(d.created_at)}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <details style={{ textAlign: 'left', marginBottom: d.status === 'success' ? '0.4rem' : 0 }}>
+                        <summary style={{ cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.75rem' }}>Activity</summary>
+                        <pre style={{ whiteSpace: 'pre-wrap', maxWidth: '340px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{d.logs_summary || 'No activity details recorded yet.'}</pre>
+                      </details>
+                      {d.status === 'success' && (
+                        <button
+                          onClick={() => handleRollback(d.commit_sha)}
+                          className="btn-secondary"
+                          style={{ padding: '0.28rem 0.65rem', fontSize: '0.75rem', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}
+                        >
+                          ⏪ Rollback
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
