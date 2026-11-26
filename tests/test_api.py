@@ -11,6 +11,8 @@ from fastapi.testclient import TestClient
 from app.auth import reset_auth_rate_limits
 from app.db import (
     Deployment,
+    HealthCheck,
+    Project,
     SecurityScan,
     SessionLocal,
     init_db,
@@ -138,6 +140,46 @@ def test_list_projects_never_leaks_deploy_hook_url(auth_client, sample_project):
     for p in projects:
         assert "deploy_hook_url" not in p
         assert "has_deploy_hook" in p
+
+
+@patch("app.main.get_latest_render_deploy_status", return_value="build_failed")
+def test_list_projects_reports_render_deployment_failure(mock_render_status, auth_client):
+    repo = f"test-org/render-failed-{uuid.uuid4().hex[:6]}"
+    render_service_id = f"srv-test-{uuid.uuid4().hex}"
+    response = auth_client.post("/api/projects", json={
+        "name": "Failed Render Service",
+        "repo_name": repo,
+        "service_url": "https://failed-render.onrender.com",
+    })
+    assert response.status_code == 201
+    project_id = response.json()["id"]
+
+    db = SessionLocal()
+    try:
+        project = db.query(Project).filter(Project.id == project_id).first()
+        project.render_service_id = render_service_id
+        project.status = "degraded"
+        db.add(HealthCheck(
+            project_id=project_id,
+            endpoint="/health",
+            status_code=404,
+            response_time_ms=12,
+            is_healthy=False,
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+    with patch("app.main.config.RENDER_API_KEY", "test-render-key"):
+        response = auth_client.get("/api/projects")
+
+    assert response.status_code == 200
+    project = next(item for item in response.json() if item["id"] == project_id)
+    assert project["status"] == "degraded"
+    assert project["render_deploy_status"] == "build_failed"
+    assert project["last_probe_status"] == 404
+    assert project["last_probe_healthy"] is False
+    mock_render_status.assert_any_call(render_service_id)
 
 
 def test_create_project_and_get(auth_client):

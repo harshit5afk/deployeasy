@@ -650,7 +650,7 @@ def test_alembic_schema_migration_current_matches_head():
     cfg = Config("alembic.ini")
     script = ScriptDirectory.from_config(cfg)
     head_rev = script.get_current_head()
-    assert head_rev in ("001_initial", "002_render_service_id")
+    assert head_rev in ("001_initial", "002_render_service_id", "003_render_deploy_status")
 
 
 def test_demo_user_forbidden_from_trigger_rollback_and_probes():

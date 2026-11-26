@@ -113,3 +113,43 @@ def create_render_service(
         "dashboard_url": str(service.get("dashboardUrl") or ""),
         "deploy_id": str(result.get("deployId") or ""),
     }
+
+
+def get_latest_render_deploy_status(service_id: str) -> str | None:
+    """Return the latest deployment status for a Render service."""
+    api_key = config.RENDER_API_KEY.strip()
+    if not api_key:
+        raise RenderIntegrationError("Render API is not connected.")
+
+    request = urllib.request.Request(
+        f"https://api.render.com/v1/services/{service_id}/deploys?limit=1",
+        headers={
+            "Accept": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            result = json.load(response)
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403):
+            raise RenderIntegrationError("Render rejected the API key or it cannot access this service.") from exc
+        raise RenderIntegrationError(f"Could not retrieve Render deployment status (HTTP {exc.code}).") from exc
+    except (urllib.error.URLError, TimeoutError) as exc:
+        raise RenderIntegrationError("Could not reach Render to retrieve deployment status.") from exc
+    except (ValueError, TypeError) as exc:
+        raise RenderIntegrationError("Render returned an invalid deployment status response.") from exc
+
+    if not isinstance(result, list) or not result:
+        return None
+
+    latest = result[0]
+    if isinstance(latest, dict):
+        deploy = latest.get("deploy", latest)
+        if isinstance(deploy, dict):
+            deploy_status = deploy.get("status")
+            if isinstance(deploy_status, str) and deploy_status:
+                return deploy_status[:30]
+
+    raise RenderIntegrationError("Render returned an invalid deployment status response.")

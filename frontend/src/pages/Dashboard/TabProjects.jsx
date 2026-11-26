@@ -26,6 +26,18 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onE
     return () => clearInterval(timer);
   }, [projects]);
 
+  React.useEffect(() => {
+    const hasRenderDeploymentInProgress = (projects || []).some(
+      (p) => ['created', 'queued', 'build_in_progress', 'update_in_progress', 'pre_deploy_in_progress']
+        .includes(p.render_deploy_status?.toLowerCase())
+    );
+    if (!hasRenderDeploymentInProgress || !onRefreshProjects) return;
+
+    const timer = setInterval(() => onRefreshProjects(), 30000);
+
+    return () => clearInterval(timer);
+  }, [projects, onRefreshProjects]);
+
   const handleProbe = async (pId) => {
     setProbingId(pId);
     setProbeResult(null);
@@ -78,6 +90,20 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onE
             {projects && projects.length > 0 ? (
               projects.map((p) => {
                 const isProbing = probingId === p.id;
+                const renderStatus = p.render_deploy_status?.toLowerCase();
+                const renderDeployFailed = ['build_failed', 'update_failed', 'pre_deploy_failed', 'canceled'].includes(renderStatus);
+                const renderDeployInProgress = ['created', 'queued', 'build_in_progress', 'update_in_progress', 'pre_deploy_in_progress'].includes(renderStatus);
+                const healthStatus = p.last_probe_healthy === false ? 'degraded' : (p.status || 'unknown');
+                const statusLabel = renderDeployFailed
+                  ? 'DEPLOY FAILED'
+                  : renderDeployInProgress
+                    ? 'DEPLOYING'
+                    : healthStatus.toUpperCase();
+                const statusClass = renderDeployFailed || healthStatus === 'degraded'
+                  ? 'badge-failed'
+                  : healthStatus === 'operational'
+                    ? 'badge-success'
+                    : 'badge-deploying';
                 const result = probeResult && probeResult.projectId === p.id
                   ? probeResult
                   : p.last_probe_latency != null
@@ -87,14 +113,7 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onE
                         status: p.last_probe_status || 200,
                         isHealthy: p.last_probe_healthy ?? true,
                       }
-                    : p.service_url && p.status === 'operational'
-                      ? {
-                          projectId: p.id,
-                          latency: 178.6,
-                          status: 200,
-                          isHealthy: true,
-                        }
-                      : null;
+                    : null;
                 return (
                   <tr key={p.id}>
                     <td>
@@ -102,8 +121,8 @@ export function TabProjects({ projects, onRefreshProjects, onOpenNewProject, onE
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}><a href={`https://github.com/${p.repo_name}`} target="_blank" rel="noreferrer">{p.repo_name}</a> · {p.branch}</div>
                     </td>
                     <td>
-                      <span className={`badge-status ${p.status === 'operational' ? 'badge-success' : 'badge-deploying'}`}>
-                        {p.status?.toUpperCase() || 'OPERATIONAL'}
+                      <span className={`badge-status ${statusClass}`}>
+                        {statusLabel}
                       </span>
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>

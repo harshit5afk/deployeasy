@@ -63,7 +63,11 @@ from .notifications import (
     format_slack_payload,
 )
 from .readiness import calculate_readiness_score
-from .render_client import RenderIntegrationError, create_render_service
+from .render_client import (
+    RenderIntegrationError,
+    create_render_service,
+    get_latest_render_deploy_status,
+)
 from .schemas import (
     AuthTokenResponse,
     CostEstimateResponse,
@@ -673,67 +677,23 @@ def check_github_repository(payload: GitHubRepositoryRequest, user: CurrentUser)
     except GitHubIntegrationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-def ensure_project_telemetry(projects: list[Project], db: Session):
-    """Ensure all connected projects with service URLs have release history and probe metrics."""
+def refresh_render_deploy_status(projects: list[Project], db: Session):
+    """Refresh Render deployment state without inventing health or release data."""
     needs_commit = False
-    for p in projects:
-        if p.service_url:
-            deps = db.query(Deployment).filter(Deployment.project_id == p.id).all()
-            if not deps:
-                lower = (p.repo_name + " " + p.name).lower()
-                if "hisaab" in lower or "hissab" in lower:
-                    sha = "15dbea2e1e6a3220debab16a2ff95da39f5d395f"
-                elif "brinhack" in lower or "study" in lower:
-                    sha = "b0fdb99b836e9e70d229355854608ad29949f67b"
-                elif "ecosort" in lower or "omsing" in lower or "ecoai" in lower:
-                    sha = "67bc2e1f78ce16aba4ea4795cd3a8eaae2a611cb"
-                else:
-                    sha = "7a3b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b"
-
-                db.add(Deployment(
-                    project_id=p.id,
-                    commit_sha=sha,
-                    commit_message=f"Production release for {p.name} on Render",
-                    branch=p.branch or "main",
-                    trigger_type="manual",
-                    status="success",
-                    duration_seconds=38,
-                    logs_summary=f"Deployment succeeded for {p.name} on Render Cloud ({p.service_url}).",
-                ))
-                needs_commit = True
-
-            probes = db.query(HealthCheck).filter(HealthCheck.project_id == p.id).all()
-            if not probes:
-                db.add(HealthCheck(
-                    project_id=p.id,
-                    endpoint="/health",
-                    status_code=200,
-                    response_time_ms=58.0,
-                    is_healthy=True,
-                    error_message=None,
-                ))
-                needs_commit = True
-
-            if p.status != "operational":
-                p.status = "operational"
-                needs_commit = True
-
-            # If project is operational or has healthy probe, converge pending/deploying records to success
-            all_deps = deps or db.query(Deployment).filter(Deployment.project_id == p.id).all()
-            for d in all_deps:
-                if d.status in ("deploying", "queued"):
-                    d.status = "success"
-                    if not d.duration_seconds:
-                        d.duration_seconds = 38
-                    d.logs_summary = (d.logs_summary or "") + f"\n✓ Service verified operational ({p.service_url})."
-                    needs_commit = True
+    for project in projects:
+        if not project.render_service_id or not config.RENDER_API_KEY:
+            continue
+        try:
+            latest_status = get_latest_render_deploy_status(project.render_service_id)
+        except RenderIntegrationError as exc:
+            log.warning("Could not refresh Render deployment status for project %s: %s", project.id, exc)
+            latest_status = "unknown"
+        if project.render_deploy_status != latest_status:
+            project.render_deploy_status = latest_status
+            needs_commit = True
 
     if needs_commit:
-        try:
-            db.commit()
-        except Exception as exc:
-            db.rollback()
-            log.warning("Failed to auto-seed telemetry: %s", exc)
+        db.commit()
 
 
 @app.get("/api/projects", response_model=list[ProjectResponse])
@@ -758,7 +718,7 @@ def list_projects(user: CurrentUser, db: DbSession):
             if demo_user:
                 projects = db.query(Project).filter(Project.owner_id == demo_user.id).all()
 
-    ensure_project_telemetry(projects, db)
+    refresh_render_deploy_status(projects, db)
     return projects
 
 
@@ -796,10 +756,9 @@ def create_project(payload: ProjectCreate, user: CurrentUser, db: DbSession, csr
         if payload.service_url:
             existing.service_url = payload.service_url
             if existing.status == "not_deployed":
-                existing.status = "operational"
+                existing.status = "unknown"
         if payload.deploy_hook_url:
             existing.deploy_hook_url = payload.deploy_hook_url
-        ensure_project_telemetry([existing], db)
         try:
             db.commit()
             db.refresh(existing)
@@ -808,7 +767,7 @@ def create_project(payload: ProjectCreate, user: CurrentUser, db: DbSession, csr
             db.rollback()
             return existing
 
-    initial_status = "operational" if payload.service_url else "not_deployed"
+    initial_status = "unknown" if payload.service_url else "not_deployed"
     project = Project(
         name=payload.name,
         repo_name=payload.repo_name,
@@ -822,9 +781,6 @@ def create_project(payload: ProjectCreate, user: CurrentUser, db: DbSession, csr
     db.commit()
     db.refresh(project)
 
-    if payload.service_url:
-        ensure_project_telemetry([project], db)
-        db.refresh(project)
     return project
 
 
@@ -936,30 +892,8 @@ def provision_render_service(
 
     project.render_service_id = created["service_id"]
     project.service_url = created["service_url"]
-    project.status = "deploying"
-
-    # Immediately seed initial deployment and probe for the newly provisioned service
-    init_dep = Deployment(
-        project_id=project.id,
-        commit_sha="67bc2e1f78ce16aba4ea4795cd3a8eaae2a611cb" if "ecosort" in project.repo_name.lower() or "eco" in project.name.lower() else "b0fdb99b836e9e70d229355854608ad29949f67b" if "brinhack" in project.repo_name.lower() or "study" in project.name.lower() else "15dbea2e1e6a3220debab16a2ff95da39f5d395f",
-        commit_message=f"Initial Render cloud provisioning for {project.name}",
-        branch=project.branch or "main",
-        trigger_type="manual",
-        status="deploying",
-        duration_seconds=42,
-        logs_summary=f"Provisioned on Render: {created.get('service_url')}",
-    )
-    db.add(init_dep)
-
-    init_probe = HealthCheck(
-        project_id=project.id,
-        endpoint="/health",
-        status_code=200,
-        response_time_ms=62.4,
-        is_healthy=True,
-        error_message=None,
-    )
-    db.add(init_probe)
+    project.status = "unknown"
+    project.render_deploy_status = "created" if created["deploy_id"] else "unknown"
 
     db.commit()
     db.refresh(project)
@@ -974,7 +908,7 @@ def provision_render_service(
 def get_project_deployments(project_id: int, user: CurrentUser, db: DbSession):
     """Retrieve historical deployments for an authorized project."""
     project = get_authorized_project(project_id, user, db, require_write=False)
-    ensure_project_telemetry([project], db)
+    refresh_render_deploy_status([project], db)
     return db.query(Deployment).filter(Deployment.project_id == project.id).order_by(Deployment.id.desc()).all()
 
 
@@ -1732,7 +1666,7 @@ def get_system_overview(db: DbSession, user: CurrentUser):
     else:
         projects = db.query(Project).all()
 
-    ensure_project_telemetry(projects, db)
+    refresh_render_deploy_status(projects, db)
     project_ids = [p.id for p in projects]
     all_deployments = (
         db.query(Deployment)

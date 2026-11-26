@@ -68,6 +68,7 @@ class Project(Base):
     service_url = Column(String(255), default="")
     deploy_hook_url = Column(String(255), default="")
     render_service_id = Column(String(80), nullable=True, unique=True, index=True)
+    render_deploy_status = Column(String(30), nullable=True)
     status = Column(String(30), default="operational")
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
