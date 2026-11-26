@@ -100,6 +100,7 @@ def test_anonymous_cannot_access_projects():
         ("GET", "/api/projects"),
         ("POST", "/api/projects"),
         ("GET", "/api/projects/1"),
+        ("POST", "/api/projects/1/validate-env/live"),
         ("GET", "/api/projects/1/deployments"),
         ("POST", "/api/deployments/trigger"),
         ("POST", "/api/deployments/rollback"),
@@ -175,6 +176,25 @@ def test_cross_user_project_isolation(test_users):
     # User B attempts health probe on Alice's project -> 403 Forbidden
     res_b_probe = client_b.post(f"/api/projects/{proj_a_id}/check-health")
     assert res_b_probe.status_code == 403
+
+
+def test_live_environment_audit_enforces_project_ownership(test_users):
+    user_a, user_b = test_users
+    client_a = create_client_for_user(user_a)
+    client_b = create_client_for_user(user_b)
+    response = client_a.post("/api/projects", json={
+        "name": "Private Render Environment",
+        "repo_name": f"alice-org/private-{uuid.uuid4().hex[:6]}",
+        "service_url": "https://private-env.onrender.com",
+    })
+    assert response.status_code == 201
+    project_id = response.json()["id"]
+
+    with patch("app.main.get_render_service_environment") as mock_render_environment:
+        response = client_b.post(f"/api/projects/{project_id}/validate-env/live")
+
+    assert response.status_code == 403
+    mock_render_environment.assert_not_called()
 
 
 # =============================================================================
@@ -567,6 +587,11 @@ def test_csrf_protection_on_all_state_changing_endpoints(test_users):
 
     # Now strip CSRF token from header
     c.headers.pop("X-CSRF-Token", None)
+
+    # Live environment audit also requires CSRF protection.
+    r_env_audit = c.post(f"/api/projects/{proj_id}/validate-env/live")
+    assert r_env_audit.status_code == 403
+    assert "CSRF" in r_env_audit.json()["detail"]
 
     # 1. Health probe without CSRF -> 403
     r_probe = c.post(f"/api/projects/{proj_id}/check-health")

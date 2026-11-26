@@ -1,20 +1,46 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
 
-export function TabEnvValidator() {
+export function TabEnvValidator({ projects = [], selectedProject, onSelectProject }) {
   const [envText, setEnvText] = useState('');
-
   const [validation, setValidation] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const activeProject = projects.find((project) => project.id === selectedProject?.id) || projects[0] || null;
+
+  useEffect(() => {
+    setValidation(null);
+    setError('');
+  }, [activeProject?.id]);
 
   const handleValidate = async () => {
+    if (!envText.trim()) {
+      setError('Enter at least one KEY=VALUE line to validate.');
+      return;
+    }
     setLoading(true);
     setValidation(null);
+    setError('');
     try {
       const res = await api.validateEnv(envText);
       setValidation(res);
     } catch (err) {
-      alert(err.message || 'Validation request failed');
+      setError(err.message || 'Validation request failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLiveAudit = async () => {
+    if (!activeProject?.id || !activeProject.render_service_created) return;
+    setLoading(true);
+    setValidation(null);
+    setError('');
+    try {
+      const result = await api.auditRenderEnv(activeProject.id);
+      setValidation(result);
+    } catch (err) {
+      setError(err.message || 'Live Render audit failed');
     } finally {
       setLoading(false);
     }
@@ -28,13 +54,51 @@ export function TabEnvValidator() {
             <span>⚙️</span> Environment Variable Validator & Secret Leak Shield
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Validate key/value syntax and policy checks. Avoid pasting production secrets into this tool.
+            Audit a connected Render service or validate non-production variables. Live values are never shown or saved.
           </span>
         </div>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <label className="form-label" htmlFor="env-audit-project" style={{ margin: 0 }}>Connected project:</label>
+          <select
+            id="env-audit-project"
+            className="form-input"
+            value={activeProject?.id || ''}
+            disabled={loading || projects.length === 0}
+            onChange={(event) => {
+              const project = projects.find((item) => String(item.id) === event.target.value);
+              if (project) onSelectProject?.(project);
+            }}
+            style={{ minWidth: '220px', width: 'auto' }}
+          >
+            {projects.length === 0 && <option value="">No projects connected</option>}
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>{project.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem', padding: '0.9rem 1rem', background: 'rgba(129, 140, 248, 0.08)', border: '1px solid rgba(129, 140, 248, 0.25)', borderRadius: '8px' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+            {activeProject?.render_service_created
+              ? `Audit environment variables configured directly on Render for ${activeProject.name}. Linked Render Environment Groups are not included.`
+              : 'Select a project linked to Render to audit its live environment variables.'}
+            <div style={{ marginTop: '0.25rem' }}>Values are checked server-side, redacted from results, and never stored.</div>
+          </div>
+          <button
+            onClick={handleLiveAudit}
+            disabled={loading || !activeProject?.render_service_created}
+            className="btn-primary"
+            style={{ padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}
+          >
+            {loading ? 'Auditing...' : '🛡️ Audit Live Render Environment'}
+          </button>
+        </div>
+
         <div style={{ marginBottom: '1rem' }}>
-          <label className="form-label">Enter non-production sample variables (Key=Value pairs):</label>
+          <label className="form-label" htmlFor="env-validator-input">Or validate non-production sample variables (KEY=VALUE pairs):</label>
           <textarea
+            id="env-validator-input"
             className="form-input"
             rows={7}
             style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', lineHeight: 1.5 }}
@@ -44,7 +108,7 @@ export function TabEnvValidator() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-            <button
+          <button
             onClick={() => setEnvText('PORT=hello\nDATABASE_URL=sqlite:///./test.db\nSECRET_KEY=changeme')}
             className="btn-secondary"
             style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}
@@ -53,13 +117,14 @@ export function TabEnvValidator() {
           </button>
           <button
             onClick={handleValidate}
-            disabled={loading}
-            className="btn-primary"
+            disabled={loading || !envText.trim()}
+            className="btn-secondary"
             style={{ padding: '0.5rem 1.25rem' }}
           >
             {loading ? 'Auditing...' : '🛡️ Validate Environment Variables'}
           </button>
         </div>
+        {error && <p role="alert" style={{ marginTop: '0.85rem', color: '#f87171' }}>{error}</p>}
       </div>
 
       {validation && (
@@ -79,13 +144,31 @@ export function TabEnvValidator() {
             </div>
           </div>
 
+          {validation.source === 'render' && (
+            <p style={{ padding: '0 1.25rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+              Live audit for {validation.project_name}. Values were read by the server and redacted before returning this result.
+            </p>
+          )}
+          {validation.errors?.length > 0 && (
+            <div role="alert" style={{ padding: '0.75rem 1.25rem', color: '#f87171' }}>
+              <strong>Errors</strong>
+              <ul>{validation.errors.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
+            </div>
+          )}
+          {validation.warnings?.length > 0 && (
+            <div style={{ padding: '0.75rem 1.25rem', color: '#fbbf24' }}>
+              <strong>Warnings</strong>
+              <ul>{validation.warnings.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
+            </div>
+          )}
+
           <table className="custom-table">
             <thead>
               <tr>
                 <th>Variable Key</th>
-                <th>Masked Value Preview</th>
-                <th>Validation Status</th>
-                <th>Notes / Recommendations</th>
+                <th>{validation.source === 'render' ? 'Value' : 'Value Preview'}</th>
+                <th>Presence</th>
+                <th>Audit Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -96,14 +179,10 @@ export function TabEnvValidator() {
                     {v || '—'}
                   </td>
                   <td>
-                    {validation.errors?.length === 0 ? (
-                      <span className="badge-status badge-success">OK</span>
-                    ) : (
-                      <span className="badge-status badge-failed">INVALID</span>
-                    )}
+                    <span className="badge-status badge-success">PRESENT</span>
                   </td>
-                  <td style={{ fontSize: '0.8rem', color: v.warning ? '#fbbf24' : 'var(--text-muted)' }}>
-                    {validation.warnings?.join(', ') || validation.errors?.join(', ') || 'Checked by server policy.'}
+                  <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    {validation.source === 'render' ? 'Value redacted; see audit findings above.' : 'Value is sanitized for display.'}
                   </td>
                 </tr>
               ))}

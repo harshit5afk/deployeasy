@@ -211,6 +211,12 @@ class EnvValidationResponse(BaseModel):
     variables_evaluated: int
 
 
+class LiveEnvValidationResponse(EnvValidationResponse):
+    project_id: int
+    project_name: str
+    source: Literal["render"] = "render"
+
+
 class ChecklistItem(BaseModel):
     category: str
     status: str

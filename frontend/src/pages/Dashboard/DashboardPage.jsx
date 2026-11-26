@@ -279,7 +279,11 @@ export function DashboardPage() {
             )}
 
             {activeTab === 'env' && (
-              <TabEnvValidator />
+              <TabEnvValidator
+                projects={projects}
+                selectedProject={selectedProject}
+                onSelectProject={handleSelectProject}
+              />
             )}
 
             {activeTab === 'security' && (

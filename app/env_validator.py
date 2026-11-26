@@ -51,7 +51,7 @@ def sanitize_message_value(key: str, val: str) -> str:
     return val
 
 
-def validate_environment(env_vars: dict[str, str]) -> dict[str, Any]:
+def validate_environment(env_vars: dict[str, str], redact_values: bool = False) -> dict[str, Any]:
     """Validate a dictionary of environment variables against production criteria and SCHEMA_RULES."""
     errors: list[str] = []
     warnings: list[str] = []
@@ -60,7 +60,7 @@ def validate_environment(env_vars: dict[str, str]) -> dict[str, Any]:
     for key, val in env_vars.items():
         key_clean = key.strip()
         val_clean = str(val).strip() if val is not None else ""
-        safe_val_display = sanitize_message_value(key_clean, val_clean)
+        safe_val_display = "********" if redact_values and val_clean else sanitize_message_value(key_clean, val_clean)
 
         # Validate variable name syntax
         if not re.match(r"^[A-Z0-9_]+$", key_clean):
@@ -80,7 +80,7 @@ def validate_environment(env_vars: dict[str, str]) -> dict[str, Any]:
                 min_val = rule.get("min", 1) if rule else 1
                 max_val = rule.get("max", 65535) if rule else 65535
                 if port_num < min_val or port_num > max_val:
-                    errors.append(f"PORT must be an integer between {min_val} and {max_val}, got {port_num}.")
+                    errors.append(f"PORT must be an integer between {min_val} and {max_val}, got '{safe_val_display}'.")
             except ValueError:
                 errors.append(f"PORT must be a valid integer, got '{safe_val_display}'.")
 
@@ -98,7 +98,9 @@ def validate_environment(env_vars: dict[str, str]) -> dict[str, Any]:
             errors.append(f"GITHUB_REPO must be in 'owner/repo' format, got '{safe_val_display}'.")
 
         # Mask secrets in sanitized output
-        if is_sensitive_key(key_clean):
+        if redact_values and val_clean:
+            sanitized[key_clean] = "********"
+        elif is_sensitive_key(key_clean):
             sanitized[key_clean] = mask_secret(val_clean)
         else:
             sanitized[key_clean] = val_clean

@@ -137,6 +137,9 @@ export const api = {
       body: JSON.stringify({ env_vars: parsed })
     });
   },
+  auditRenderEnv: (projectId) => apiFetch(`/api/projects/${projectId}/validate-env/live`, {
+    method: 'POST'
+  }),
 
   // FinOps Cost Estimator
   getCostEstimate: (projectId) => apiFetch(`/api/projects/${projectId}/costs`),

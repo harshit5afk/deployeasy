@@ -2,6 +2,7 @@
 import json
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -153,3 +154,62 @@ def get_latest_render_deploy_status(service_id: str) -> str | None:
                 return deploy_status[:30]
 
     raise RenderIntegrationError("Render returned an invalid deployment status response.")
+
+
+def get_render_service_environment(service_id: str) -> dict[str, str]:
+    """Fetch Render environment variables for server-side validation only."""
+    api_key = config.RENDER_API_KEY.strip()
+    if not api_key:
+        raise RenderIntegrationError("Render API is not connected.")
+
+    variables: dict[str, str] = {}
+    cursor = None
+    seen_cursors: set[str] = set()
+    for _ in range(10):
+        query: dict[str, str | int] = {"limit": 100}
+        if cursor:
+            query["cursor"] = cursor
+        request = urllib.request.Request(
+            f"https://api.render.com/v1/services/{service_id}/env-vars?{urllib.parse.urlencode(query)}",
+            headers={
+                "Accept": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+            method="GET",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                page = json.load(response)
+        except urllib.error.HTTPError as exc:
+            if exc.code in (401, 403):
+                raise RenderIntegrationError("Render rejected the API key or it cannot access this service's environment.") from exc
+            raise RenderIntegrationError(f"Could not retrieve Render environment variables (HTTP {exc.code}).") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise RenderIntegrationError("Could not reach Render to retrieve environment variables.") from exc
+        except (ValueError, TypeError) as exc:
+            raise RenderIntegrationError("Render returned an invalid environment variables response.") from exc
+
+        if not isinstance(page, list):
+            raise RenderIntegrationError("Render returned an invalid environment variables response.")
+        if not page:
+            return variables
+
+        for item in page:
+            env_var = item.get("envVar") if isinstance(item, dict) else None
+            if (
+                not isinstance(env_var, dict)
+                or not isinstance(env_var.get("key"), str)
+                or not isinstance(env_var.get("value"), str)
+                or not isinstance(item.get("cursor"), str)
+                or not item["cursor"]
+            ):
+                raise RenderIntegrationError("Render returned an invalid environment variable entry.")
+            variables[env_var["key"]] = env_var["value"]
+
+        next_cursor = page[-1]["cursor"]
+        if next_cursor in seen_cursors:
+            raise RenderIntegrationError("Render returned invalid pagination for environment variables.")
+        seen_cursors.add(next_cursor)
+        cursor = next_cursor
+
+    raise RenderIntegrationError("Render returned too many environment variable pages to audit safely.")

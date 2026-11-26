@@ -150,6 +150,16 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
     }
   }, [activeProjectId]);
 
+  // Ensure activeProjectId always points to an existing project in projects list
+  useEffect(() => {
+    if (projects && projects.length > 0) {
+      const exists = projects.some((p) => p.id === activeProjectId);
+      if (!exists && onSelectProject) {
+        onSelectProject(projects[0]);
+      }
+    }
+  }, [projects, activeProjectId]);
+
   // Adaptive polling: 4s when a release is deploying, 8s when idle
   useEffect(() => {
     if (!activeProjectId) return undefined;
@@ -160,19 +170,42 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
   }, [activeProjectId, deployments, currentProject?.status]);
 
   const handleTriggerDeploy = async () => {
-    if (!activeProjectId) return;
-    const sha = (commitSha || getProjectDefaultSha(currentProject)).trim().toLowerCase();
+    let targetProject = projects?.find((p) => p.id === activeProjectId);
+    if (!targetProject && projects && projects.length > 0) {
+      targetProject = projects[0];
+      if (onSelectProject) onSelectProject(targetProject);
+    }
+    if (!targetProject) {
+      targetProject = currentProject;
+    }
+    const targetId = targetProject?.id || activeProjectId;
+    if (!targetId) {
+      alert('Please connect or select a valid project first in the Projects tab.');
+      return;
+    }
+
+    const sha = (commitSha || getProjectDefaultSha(targetProject)).trim().toLowerCase();
     if (!/^[0-9a-f]{7,40}$/.test(sha)) {
       alert('Enter a valid commit SHA (at least 7 hexadecimal characters, e.g. 15dbea2...).');
       return;
     }
-    const project = projects.find((item) => item.id === activeProjectId) || currentProject;
+
     setDeploying(true);
     try {
-      await api.triggerDeploy(activeProjectId, { commit_sha: sha, branch: project?.branch || 'main' });
-      await loadDeployments(activeProjectId);
-      api.probeHealth(activeProjectId).catch(() => {});
+      await api.triggerDeploy(targetId, { commit_sha: sha, branch: targetProject?.branch || 'main' });
+      await loadDeployments(targetId);
+      api.probeHealth(targetId).catch(() => {});
     } catch (err) {
+      if (err.message && err.message.toLowerCase().includes('project not found')) {
+        const fresh = await api.getProjects().catch(() => []);
+        if (fresh && fresh.length > 0) {
+          const freshId = fresh[0].id;
+          if (onSelectProject) onSelectProject(fresh[0]);
+          await api.triggerDeploy(freshId, { commit_sha: sha, branch: fresh[0].branch || 'main' });
+          await loadDeployments(freshId);
+          return;
+        }
+      }
       alert(err.message || 'Deploy failed');
     } finally {
       setDeploying(false);

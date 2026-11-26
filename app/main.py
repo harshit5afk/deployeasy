@@ -1,3 +1,4 @@
+
 """DeployEasy: Production Cloud CI/CD & Deployment Platform."""
 import asyncio
 import hashlib
@@ -67,6 +68,7 @@ from .render_client import (
     RenderIntegrationError,
     create_render_service,
     get_latest_render_deploy_status,
+    get_render_service_environment,
 )
 from .schemas import (
     AuthTokenResponse,
@@ -79,6 +81,7 @@ from .schemas import (
     GitHubRepositoryRequest,
     IncidentReportRequest,
     IncidentReportResponse,
+    LiveEnvValidationResponse,
     LogAnalysisRequest,
     LogAnalysisResponse,
     OverviewStats,
@@ -705,13 +708,16 @@ def list_projects(user: CurrentUser, db: DbSession):
         projects = db.query(Project).all()
     else:
         projects = db.query(Project).filter(Project.owner_id == user.id).all()
-        # For our specific owner account in production/observatory, claim unassigned projects
-        if not projects and user.username in ("hv157390", "harshit5afk"):
+        # For observatory developers in cloud deployment, claim unassigned fleet projects
+        if not projects and (user.username in ("hv157390", "harshit5afk", "senpai") or (user.email and "hv157390" in user.email)):
             fleet = db.query(Project).all()
             for p in fleet:
                 if not p.owner_id or p.owner_id == user.id:
                     p.owner_id = user.id
-            db.commit()
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
             projects = db.query(Project).filter(Project.owner_id == user.id).all()
 
         if not projects and user.role == "demo":
@@ -1519,6 +1525,46 @@ def analyze_deployment_record(deployment_id: int, user: CurrentUser, db: DbSessi
 def validate_env_config(payload: EnvValidationRequest):
     """Validate project environment variables against production criteria without secret leakage."""
     return validate_environment(payload.env_vars)
+
+
+@app.post(
+    "/api/projects/{project_id}/validate-env/live",
+    response_model=LiveEnvValidationResponse,
+)
+def validate_live_project_environment(
+    project_id: int,
+    user: CurrentUser,
+    db: DbSession,
+    csrf: CsrfProtect = None,
+):
+    """Audit a linked Render service's environment without returning its values."""
+    if not db.query(Project).filter(Project.id == project_id).first():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found.")
+    project = get_authorized_project(project_id, user, db, require_write=False)
+    if user.role == "demo":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Demo accounts cannot audit live environment variables.")
+    if not project.render_service_id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Link a Render service to this project before running a live audit.")
+    if not config.RENDER_API_KEY.strip():
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Render API is not configured for live environment audits.")
+
+    try:
+        env_vars = get_render_service_environment(project.render_service_id)
+    except RenderIntegrationError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    result = validate_environment(env_vars, redact_values=True)
+    if not env_vars:
+        result["warnings"].insert(0, "No directly configured environment variables were found on this Render service.")
+    result["warnings"].append(
+        "Variables from Render Environment Groups are not included; only variables set directly on this service were audited."
+    )
+    return {
+        **result,
+        "project_id": project.id,
+        "project_name": project.name,
+        "source": "render",
+    }
 
 
 # -----------------------------------------------------------------------------

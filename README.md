@@ -189,6 +189,7 @@ Server will be running at: **`http://localhost:8080`**
 | `POST`| `/api/projects/{id}/check-health`| Execute SSRF-safe live probe against target URL | Yes |
 | `GET` | `/api/projects/{id}/security` | Retrieve Trivy CVE findings and Gitleaks scan reports | Yes |
 | `POST`| `/api/validate-env` | Validate `.env` configuration keys and placeholders | Yes |
+| `POST`| `/api/projects/{id}/validate-env/live` | Audit linked Render service variables; values are redacted and linked Environment Groups are excluded | Yes |
 | `POST`| `/api/analyze-logs` | Diagnose CI/CD build logs and provide remediation steps | Yes |
 
 ---
@@ -213,10 +214,10 @@ Follow these steps to deploy DeployEasy to production:
      - `DEPLOYEASY_CALLBACK_SECRET=<random shared HMAC secret>`
      - `GITHUB_WEBHOOK_SECRET=<separate random webhook secret>`
      - `GITHUB_TOKEN=<token with Actions workflow dispatch permission>`
-     - `RENDER_API_KEY=<Render API key with service-create permission>`
+     - `RENDER_API_KEY=<Render API key with service creation and service environment read access>`
      - `RENDER_OWNER_ID=<Render workspace ID>`
      - `DEPLOYEASY_ADMIN_PASSWORD=<strong initial admin password>`
-   - These Render credentials let an authenticated user request a new free web service or static site from a connected GitHub repo. Render starts its first deployment after creation. Users still need to choose the service type and build/start commands; Render must have access to the repository. Render API keys are secrets and must only be stored as environment variables.
+   - These Render credentials let an authenticated user request a new free web service or static site from a connected GitHub repo. Render starts its first deployment after creation. Users still need to choose the service type and build/start commands; Render must have access to the repository. The live environment audit reads only variables configured directly on the service; linked Environment Groups are excluded, and values are redacted from responses. Render API keys are secrets and must only be stored as environment variables.
 4. **GitHub Actions configuration**:
    - Connected repositories need compatible `.github/workflows/pipeline.yml` and `rollback.yml` workflows.
    - Configure DeployEasy's `GITHUB_TOKEN` with permission to dispatch repository workflows.

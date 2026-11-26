@@ -182,6 +182,61 @@ def test_list_projects_reports_render_deployment_failure(mock_render_status, aut
     mock_render_status.assert_any_call(render_service_id)
 
 
+@patch(
+    "app.main.get_render_service_environment",
+    return_value={
+        "PORT": "70000",
+        "API_TOKEN": "live-production-secret-value",
+        "PUBLIC_LABEL": "customer-private-label",
+    },
+)
+def test_live_render_environment_audit_never_returns_values(mock_render_environment, auth_client):
+    repo = f"test-org/env-audit-{uuid.uuid4().hex[:6]}"
+    response = auth_client.post("/api/projects", json={
+        "name": "Environment Audit Project",
+        "repo_name": repo,
+        "service_url": "https://env-audit.onrender.com",
+    })
+    assert response.status_code == 201
+    project_id = response.json()["id"]
+    response = auth_client.post(f"/api/projects/{project_id}/validate-env/live")
+    assert response.status_code == 409
+    service_id = f"srv-env-audit-{uuid.uuid4().hex}"
+
+    db = SessionLocal()
+    try:
+        project = db.query(Project).filter(Project.id == project_id).first()
+        project.render_service_id = service_id
+        db.commit()
+    finally:
+        db.close()
+
+    with patch("app.main.config.RENDER_API_KEY", "test-render-key"):
+        response = auth_client.post(f"/api/projects/{project_id}/validate-env/live")
+
+    assert response.status_code == 200
+    result = response.json()
+    response_text = response.text
+    assert result["source"] == "render"
+    assert result["project_id"] == project_id
+    assert result["variables_evaluated"] == 3
+    assert result["sanitized_variables"] == {
+        "PORT": "********",
+        "API_TOKEN": "********",
+        "PUBLIC_LABEL": "********",
+    }
+    assert "live-production-secret-value" not in response_text
+    assert "customer-private-label" not in response_text
+    assert "70000" not in response_text
+    assert "Environment Groups are not included" in response_text
+    mock_render_environment.assert_called_once_with(service_id)
+
+    missing_project_id = project_id + 1000000
+    response = auth_client.post(f"/api/projects/{missing_project_id}/validate-env/live")
+    assert response.status_code == 404
+    mock_render_environment.assert_called_once_with(service_id)
+
+
 def test_create_project_and_get(auth_client):
     unique_repo = f"test-org/service-{uuid.uuid4().hex[:6]}"
     payload = {
