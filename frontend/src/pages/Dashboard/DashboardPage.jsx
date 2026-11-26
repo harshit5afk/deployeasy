@@ -71,45 +71,55 @@ export function DashboardPage() {
         return;
       }
       if (ovData) setOverview(ovData);
-      if (projData && projData.length > 0) {
-        // Merge with locally cached projects by repo_name so no project is accidentally dropped
-        let mergedList = [...projData];
+      let availableProjects = projData || [];
+      if (availableProjects.length === 0) {
+        let cachedProjects = [];
         try {
           const cached = JSON.parse(localStorage.getItem('deployeasy_saved_projects') || '[]');
-          for (const c of cached) {
-            if (c.repo_name && !mergedList.some((p) => p.repo_name === c.repo_name)) {
-              mergedList.push(c);
-            }
-          }
-          localStorage.setItem('deployeasy_saved_projects', JSON.stringify(mergedList));
-        } catch (_) {}
+          if (Array.isArray(cached)) cachedProjects = cached;
+        } catch (err) {
+          console.error('Could not read cached projects:', err);
+        }
 
-        setProjects(mergedList);
-        const savedProjId = sessionStorage.getItem('deployeasy_selected_project_id');
-        const match = mergedList.find((p) => String(p.id) === savedProjId);
-        setSelectedProject((prev) => prev || match || (mergedList.length > 0 ? mergedList[0] : null));
-      } else {
-        // Fallback: restore from localStorage cache if container restarted or session refreshed
-        try {
-          const cached = JSON.parse(localStorage.getItem('deployeasy_saved_projects') || '[]');
-          if (cached && cached.length > 0) {
-            setProjects(cached);
-            setSelectedProject((prev) => prev || cached[0]);
-            // Background restore to backend
-            for (const cp of cached) {
-              if (cp.repo_name) {
-                api.createProject({
-                  name: cp.name,
-                  repo_url: `https://github.com/${cp.repo_name}`,
-                  branch: cp.branch || 'main',
-                  service_url: cp.service_url || undefined,
-                  deploy_hook_url: cp.deploy_hook_url || undefined,
-                }).catch(() => {});
-              }
+        if (cachedProjects.length > 0) {
+          const restoredProjects = await Promise.all(cachedProjects.map(async (project) => {
+            if (!project.repo_name) return null;
+            try {
+              return await api.createProject({
+                name: project.name,
+                repo_url: `https://github.com/${project.repo_name}`,
+                branch: project.branch || 'main',
+                service_url: project.service_url || undefined,
+                deploy_hook_url: project.deploy_hook_url || undefined,
+              });
+            } catch (err) {
+              console.error(`Could not restore project ${project.repo_name}:`, err);
+              return null;
             }
-          }
-        } catch (_) {}
+          }));
+          availableProjects = restoredProjects.filter(Boolean);
+        }
       }
+
+      setProjects(availableProjects);
+      try {
+        localStorage.setItem('deployeasy_saved_projects', JSON.stringify(availableProjects));
+      } catch (err) {
+        console.error('Could not cache projects:', err);
+      }
+      const savedProjId = sessionStorage.getItem('deployeasy_selected_project_id');
+      setSelectedProject((prev) => {
+        const selected = availableProjects.find((project) => String(project.id) === savedProjId)
+          || availableProjects.find((project) => project.repo_name === prev?.repo_name)
+          || availableProjects[0]
+          || null;
+        if (selected?.id) {
+          sessionStorage.setItem('deployeasy_selected_project_id', String(selected.id));
+        } else {
+          sessionStorage.removeItem('deployeasy_selected_project_id');
+        }
+        return selected;
+      });
       setCurrentUser(userData);
       if (userData?.role === 'admin') {
         setActiveTab('admin');

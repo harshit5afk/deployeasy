@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api';
 
+const INDIA_LOCALE = 'en-IN';
+const INDIA_TIME_ZONE = 'Asia/Kolkata';
+
 export function parseDate(dateInput) {
   if (!dateInput) return null;
   if (dateInput instanceof Date) return isNaN(dateInput.getTime()) ? null : dateInput;
@@ -36,19 +39,35 @@ export function formatRelativeTime(dateInput, nowMs = Date.now()) {
   if (diffHours < 24) return `${diffHours}h ago`;
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleDateString();
+  return d.toLocaleDateString(INDIA_LOCALE, { timeZone: INDIA_TIME_ZONE });
 }
 
-export function formatLocalTime(dateInput) {
+export function formatIndiaDate(dateInput) {
   const d = parseDate(dateInput);
   if (!d) return '—';
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return d.toLocaleDateString(INDIA_LOCALE, { timeZone: INDIA_TIME_ZONE });
 }
 
-export function formatFullDateTime(dateInput) {
+export function formatIndiaTime(dateInput) {
+  const d = parseDate(dateInput);
+  if (!d) return '—';
+  return d.toLocaleTimeString(INDIA_LOCALE, {
+    timeZone: INDIA_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: 'short',
+  });
+}
+
+export function formatIndiaDateTime(dateInput) {
   const d = parseDate(dateInput);
   if (!d) return '';
-  return d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'medium' });
+  return d.toLocaleString(INDIA_LOCALE, {
+    timeZone: INDIA_TIME_ZONE,
+    dateStyle: 'medium',
+    timeStyle: 'medium',
+  });
 }
 
 export function TabDeployments({ projects, selectedProject, onSelectProject }) {
@@ -365,8 +384,8 @@ export function TabDeployments({ projects, selectedProject, onSelectProject }) {
                         <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>
                           {formatRelativeTime(d.created_at, now)}
                         </span>
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }} title={formatFullDateTime(d.created_at)}>
-                          {formatLocalTime(d.created_at)}
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }} title={formatIndiaDateTime(d.created_at)}>
+                          {formatIndiaTime(d.created_at)}
                         </span>
                       </div>
                     </td>

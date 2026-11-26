@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
+import { formatIndiaDateTime } from './TabDeployments';
 
 export function TabSecurity({ projects, selectedProject }) {
   const projectId = selectedProject?.id || projects?.[0]?.id;
@@ -62,7 +63,7 @@ export function TabSecurity({ projects, selectedProject }) {
       </div>
     )}
     {latest.length > 0 && <table className="custom-table"><thead><tr><th>Scanner</th><th>Scanned</th><th>Critical</th><th>High</th><th>Medium</th><th>Low</th><th>Result</th></tr></thead><tbody>
-      {latest.map((scan) => <tr key={scan.id}><td>{scan.scan_type}</td><td>{scan.scanned_at ? new Date(scan.scanned_at).toLocaleString() : '—'}</td><td>{scan.critical_count}</td><td>{scan.high_count}</td><td>{scan.medium_count}</td><td>{scan.low_count}</td><td>{scan.passed ? 'Passed' : 'Findings detected'}</td></tr>)}
+      {latest.map((scan) => <tr key={scan.id}><td>{scan.scan_type}</td><td>{scan.scanned_at ? formatIndiaDateTime(scan.scanned_at) : '—'}</td><td>{scan.critical_count}</td><td>{scan.high_count}</td><td>{scan.medium_count}</td><td>{scan.low_count}</td><td>{scan.passed ? 'Passed' : 'Findings detected'}</td></tr>)}
     </tbody></table>}
   </div>;
 }

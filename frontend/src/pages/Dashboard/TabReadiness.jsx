@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
+import { formatIndiaDateTime } from './TabDeployments';
 
 export function TabReadiness({ projects, selectedProject }) {
-  const projectId = selectedProject?.id || projects?.[0]?.id;
+  const projectId = projects?.some((project) => project.id === selectedProject?.id)
+    ? selectedProject.id
+    : projects?.[0]?.id;
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -74,6 +77,6 @@ export function TabReadiness({ projects, selectedProject }) {
         <span>{item.status} · {item.points} pts</span>
       </div>)}
     </div>
-    <small style={{ color: 'var(--text-muted)' }}>Evaluated target: {data?.evaluated_target || 'Unavailable'} · {data?.evaluated_at ? new Date(data.evaluated_at).toLocaleString() : ''}</small>
+    <small style={{ color: 'var(--text-muted)' }}>Evaluated target: {data?.evaluated_target || 'Unavailable'} · {data?.evaluated_at ? formatIndiaDateTime(data.evaluated_at) : ''}</small>
   </div>;
 }

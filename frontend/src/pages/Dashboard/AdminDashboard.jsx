@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
+import { formatIndiaDate, formatIndiaDateTime } from './TabDeployments';
 
 const Stat = ({ title, value }) => (
   <div className="stat-card card-cyan"><div className="stat-label">{title}</div><div className="stat-value">{value ?? '—'}</div></div>
@@ -76,7 +77,7 @@ export function AdminDashboard() {
     <section className="card-table-wrapper">
       <div className="table-header-bar"><h3>Users</h3><span>{data.users.length} accounts</span></div>
       <div style={{ overflowX: 'auto' }}><table className="custom-table"><thead><tr><th>User</th><th>Email</th><th>Role</th><th>Projects</th><th>Account</th><th>Joined</th></tr></thead><tbody>
-        {data.users.map((item) => <tr key={item.id}><td>{item.username}</td><td>{item.email}</td><td>{item.role}</td><td>{item.project_count}</td><td>{item.is_active ? 'Active' : 'Disabled'}</td><td>{item.created_at ? new Date(item.created_at).toLocaleDateString() : '—'}</td></tr>)}
+        {data.users.map((item) => <tr key={item.id}><td>{item.username}</td><td>{item.email}</td><td>{item.role}</td><td>{item.project_count}</td><td>{item.is_active ? 'Active' : 'Disabled'}</td><td>{item.created_at ? formatIndiaDate(item.created_at) : '—'}</td></tr>)}
       </tbody></table></div>
     </section>
 
@@ -91,7 +92,7 @@ export function AdminDashboard() {
     <section className="card-table-wrapper">
       <div className="table-header-bar"><h3>Recent deployments</h3><span>Latest 12</span></div>
       <div style={{ overflowX: 'auto' }}><table className="custom-table"><thead><tr><th>Project</th><th>Repository</th><th>Commit</th><th>Type</th><th>Status</th><th>Created</th></tr></thead><tbody>
-        {data.recent_deployments.map((item) => <tr key={item.id}><td>{item.project_name}</td><td>{item.repo_name}</td><td><code>{item.commit_sha.slice(0, 8)}</code></td><td>{item.trigger_type}</td><td>{item.status}</td><td>{item.created_at ? new Date(item.created_at).toLocaleString() : '—'}</td></tr>)}
+        {data.recent_deployments.map((item) => <tr key={item.id}><td>{item.project_name}</td><td>{item.repo_name}</td><td><code>{item.commit_sha.slice(0, 8)}</code></td><td>{item.trigger_type}</td><td>{item.status}</td><td>{item.created_at ? formatIndiaDateTime(item.created_at) : '—'}</td></tr>)}
         {data.recent_deployments.length === 0 && <tr><td colSpan="6">No deployment activity yet.</td></tr>}
       </tbody></table></div>
     </section>
